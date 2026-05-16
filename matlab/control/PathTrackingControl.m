@@ -75,6 +75,9 @@ function PathTrackingControl(tbot, params, path, handles, avoidance)
         if target_index >= N && distance < params.toleranceError
             break;
         end
+        
+        updatePathTrackingPlot(handles, traj, pose, target, h, alpha);
+
 
         waitfor(r);
     end

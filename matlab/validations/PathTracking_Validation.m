@@ -30,5 +30,9 @@ params.toleranceError = 0.2;
 tbot = connectRobot("sim");
 tbot.setPose(0, 0, 0);
 
+% Initialize Plot
+map = loadMap("empty");
+handles = setupPathTrackingPlot(map, path, -5, 1);
+
 % Control
-PathTrackingControl(tbot, params, path);
+PathTrackingControl(tbot, params, path, handles);

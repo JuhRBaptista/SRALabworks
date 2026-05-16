@@ -2,7 +2,7 @@ function mapBuilding(tbot, params, savePath)
 
     % INIT
     map.logOdds = zeros(params.mapSize, params.mapSize);
-    map.prob    = 0.5 * ones(params.mapSize, params.mapSize);
+    map.prob    = zeros(params.mapSize, params.mapSize);
 
     state.exit = false;
 
@@ -31,17 +31,7 @@ function mapBuilding(tbot, params, savePath)
         idx = tbot.getInRangeLidarDataIdx(data);
         scan = data.Cartesian(idx, :);
 
-        scan = scanFilter(scan);
-
-        % GEOMETRY 
-        worldPts = scanToWorld(scan, pose);
-        gridPts = unique(worldToGrid(worldPts, params), 'rows');
-        robotGrid = worldToGrid([pose.x, pose.y], params);
-        
-        % MAPPING 
-        map.logOdds = logOddsUpdate(map.logOdds, robotGrid, gridPts, params);
-
-        map.prob = 1 ./ (1 + exp(-map.logOdds));
+        [map, robotGrid] = mapUpdate(map, scan, pose, params, "binary");
 
         % VISUALIZATION 
         if mod(frame, params.plotSkip) == 0
@@ -55,10 +45,10 @@ function mapBuilding(tbot, params, savePath)
     end
 
     % SAVE
-    binaryMap = map.prob > 0.5;
+    binaryMap = (map.prob > 0.5);
 
     imwrite(uint8(flipud(1 - map.prob) * 255), savePath + ".png");
-    save(savePath + ".mat", 'map', 'binaryMap');
+    save(savePath + ".mat", 'binaryMap');
 
     close(ui.fig);
     tbot.stop();
