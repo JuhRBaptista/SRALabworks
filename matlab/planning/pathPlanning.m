@@ -8,7 +8,7 @@ function path = pathPlanning(mapName, savePath, robot_radius, scale)
     end
 
     % Prepare map
-    map          = load("../data/mapa.mat").map;%loadMap(mapName);
+    map          = loadMap(mapName);
     robot_pixels = round(robot_radius * scale);
     se           = strel('disk', robot_pixels);
     map          = imdilate(map, se);

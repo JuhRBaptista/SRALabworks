@@ -7,7 +7,7 @@ function logOdds = logOddsUpdate(logOdds, robotGrid, occGrid, freeGrid, params)
 
     x0 = robotGrid(1);
     y0 = robotGrid(2);
-    M  = params.mapSize;
+    M  = params.size;
 
     % Free cells via Bresenham (usa freeGrid, que inclui raios truncados)
     pts = [occGrid; freeGrid];

@@ -1,25 +1,38 @@
-function PathTrackingControl(tbot, params, path, handles, avoidance)
+function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, avoidParams, slam, savePath)
     % PathTrackingControl - Tracks a path using waypoint navigation.
-    %
-    % Required params:
-    %   path          : Nx2 matrix of waypoints [x y]
+    
+    % params:
     %   kv, ki        : distance control gains
     %   ks            : heading control gain
     %   distance      : desired tracking distance
-    %   avoidance     : "none", "vff", or "vfh"
     %   vMax          : maximum linear velocity
     %   wMax          : maximum angular velocity
     %   rate          : frequency of iteration
     %   dt            : timeskip for integrating
     %   T             : maximun time
+    %   toleranceError: minimum distance necessary for stopping
+
+    % mapParams
     %   map           : environment map
     %   scale         : map scale to real world
     %   origin        : map origin
-    %   toleranceError: minimum distance necessary for stopping
+
+    % avoidParameters (if avoidance is VFF or VFH)
+    %  check VFF/VFH header 
    
     % Default obstacle avoidance mode
     if nargin < 5
         avoidance="none";
+        mapParams = [];
+        avoidParams = [];
+    end
+    
+    if nargin < 8
+        slam = false;
+    end
+
+    if slam 
+        map = initMap(mapParams);
     end
 
     target_index = 1;
@@ -44,9 +57,18 @@ function PathTrackingControl(tbot, params, path, handles, avoidance)
         % Current waypoint
         waypoint.x = path(target_index, 1);
         waypoint.y = path(target_index, 2);
+        
+        if slam
+
+            [~, data]  = tbot.readLidar();
+            idx_occ    = tbot.getInRangeLidarDataIdx(data);
+            idx_free   = tbot.getOutRangeLidarDataIdx(data);
+            [map, ~]   = mapUpdate(map, data, idx_occ, idx_free, pose, mapParams);
+            mapParams.map = map.prob;
+        end
 
         % Compute intermediate target
-        [target, h, alpha] = computeTarget(pose, waypoint, params, avoidance);
+        [target, h, alpha] = computeTarget(pose, waypoint, avoidance, mapParams, avoidParams);
 
         % Tracking errors
         distance = getEuclidianDistance(pose, waypoint);
@@ -84,9 +106,13 @@ function PathTrackingControl(tbot, params, path, handles, avoidance)
     
     % Stop robot
     tbot.setVelocity(0, 0);
+
+    if slam
+        saveResults(map.prob, savePath);
+    end
 end
 
-function [target, h, alpha] = computeTarget(pose, waypoint, params, avoidance)
+function [target, h, alpha] = computeTarget(pose, waypoint, avoidance, mapParams, avoidParams)
     % computeTarget - Computes the navigation target.
     %
     % avoidance:
@@ -100,23 +126,20 @@ function [target, h, alpha] = computeTarget(pose, waypoint, params, avoidance)
 
     switch avoidance
         case "vff"
-            target = computeTargetVFF(pose, waypoint, params);
+            target = computeTargetVFF(pose, waypoint, mapParams, avoidParams);
         case "vfh"
-            [target, h, alpha] = computeTargetVFH(pose, waypoint, params);
+             alpha = avoidParams.sectorWidth;
+            [target, h] = computeTargetVFH(pose, waypoint, mapParams, avoidParams);
         otherwise
             target = waypoint;
     end
 end
 
-function target = computeTargetVFF(pose, waypoint, params)
+function target = computeTargetVFF(pose, waypoint, mapParams, avoidParams)
     % computeTargetVFF - Computes a target using VFF obstacle avoidance.
-    %
-    % Required params:
-    %   map, scale, origin : occupancy map parameters
     
     % Attractive and repulsive forces
-    [Fa, Fr] = VFF([pose.x, pose.y], [waypoint.x, waypoint.y], ...
-                   params.map, 10, params.scale, params.origin);
+    [Fa, Fr] = VFF([pose.x, pose.y], [waypoint.x, waypoint.y], mapParams, avoidParams);
 
     % Resultant force
     F  = Fa + Fr;
@@ -141,18 +164,11 @@ function target = computeTargetVFF(pose, waypoint, params)
     end
 end
 
-
-function [target, h, alpha] = computeTargetVFH(pose, waypoint, params)
+function [target, h] = computeTargetVFH(pose, waypoint, mapParams, avoidParams)
     % computeTargetVFH - Computes a target using VFH obstacle avoidance.
-    %
-    % Outputs:
-    %   target : intermediate target position
-    %   h      : polar histogram
-    %   alpha  : steering sectors
 
     % Compute steering direction
-    [steerAngle, h, alpha] = VFH([pose.x, pose.y, pose.theta], [waypoint.x, waypoint.y], ...
-                     params.map, 10);
+    [steerAngle, h] = VFH([pose.x, pose.y, pose.theta], [waypoint.x, waypoint.y], mapParams, avoidParams);
     
     % Stop if no valid direction exists
     if isnan(steerAngle)
@@ -169,4 +185,17 @@ function [target, h, alpha] = computeTargetVFH(pose, waypoint, params)
     % Intermediate target
     target.x = pose.x + L * cos(steerAngle);
     target.y = pose.y + L * sin(steerAngle);
+end
+
+function map = initMap(mapParams)
+    % Builds the initial map structure from mapParams.
+    map.prob    = mapParams.initialProb;
+    map.logOdds = mapParams.initialLogOdds;
+end
+
+function saveResults(mapProb, savePath)
+    % Exports the occupancy grid as both a PNG image and .mat file.
+    imgData = uint8(flipud(1 - mapProb) * 255);
+    imwrite(imgData, [savePath, '.png']);
+    save([savePath, '.mat'], 'mapProb');
 end

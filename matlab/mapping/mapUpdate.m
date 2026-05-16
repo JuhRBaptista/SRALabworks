@@ -1,4 +1,4 @@
-function [map, robotGrid] = mapUpdate(map, scan, pose, params)
+function [map, robotGrid] = mapUpdate(map, data, idx_occ, idx_free, pose, params)
     % mapUpdate- Pure map update logic
     %
     % Inputs:
@@ -11,22 +11,28 @@ function [map, robotGrid] = mapUpdate(map, scan, pose, params)
     % Output:
     %   map      : updated map struct
 
-    scan = scanFilter(scan);
+    occ_scans = data.Cartesian(idx_occ, :);
+    occ_scans = scanFilter(occ_scans);
 
-    % GEOMETRY
-    worldPts  = scanToWorld(scan, pose);
-    occGrid   = unique(worldToGrid(worldPts, params), 'rows');
+    free_scans = truncateFreeRays(data, idx_free, params.lidarMaxRange);
+
+    % 2. UPDATE MAP
+    occWorldPts  = scanToWorld(occ_scans, pose);
+    freeWorldPts  = scanToWorld(free_scans, pose);
+
+    occGridPts   = worldToGrid(occWorldPts, params);
+    freeGridPts   = worldToGrid(freeWorldPts, params);
+
     robotGrid = worldToGrid([pose.x, pose.y], params);
 
     % STRATEGY
     switch params.update
-        case "logodds"
-            freeGrid      = worldToGrid(truncateFreeRays(scan, params), params);
-            map.logOdds   = logOddsUpdate(map.logOdds, robotGrid, occGrid, freeGrid, params);
+        case "bayesian"
+            map.logOdds   = logOddsUpdate(map.logOdds, robotGrid, occGridPts, freeGridPts, params);
             map.prob      = 1 ./ (1 + exp(-map.logOdds));
         otherwise  % "binary"
-           x1 = occGrid(:, 1);
-           y1 = occGrid(:, 2);
+           x1 = occGridPts(:, 1);
+           y1 = occGridPts(:, 2);
 
            validOcc = x1 > 0 & x1 <= params.size & y1 > 0 & y1 <= params.size;
            idx      = sub2ind([params.size params.size], x1(validOcc), y1(validOcc));
@@ -38,7 +44,7 @@ function scan = scanFilter(scan)
 
     ranges = sqrt(scan(:,1).^2 + scan(:,2).^2);
 
-    maxRange = 2.0;
+    maxRange = 3.5;
     minRange = 0.1;
 
     valid = ~isnan(ranges) & ~isinf(ranges) & ...
