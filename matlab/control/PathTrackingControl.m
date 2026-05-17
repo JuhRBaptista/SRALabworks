@@ -75,7 +75,8 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
         [~, data]  = tbot.readLidar();
         
         if useEKF
-            [dsr, dsl, ~, ~] = tbot.readEncoders();
+            noise_std = 0.002;
+            [dsr, dsl, ~, ~] = tbot.readEncodersWithNoise(noise_std);
             [p, Cp]          = EKF(dsr, dsl, p, Cp, data, mapParams);
             
             pose.x     = p(1);

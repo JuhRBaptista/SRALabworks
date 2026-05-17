@@ -9,12 +9,12 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
     G = [];        % Stacked Jacobians
     R = [];        % Block-diagonal measurement covariance
 
-    for i = 1:5:360
+    for i = 1:360
         % LiDAR angle relative to robot frame
-        angle = deg2rad(i - 1);
+        angle = deg2rad(i-1);
         o = data.Ranges(i);
 
-        if isinf(o) || o <= 0
+        if isinf(o) || o <= 0 || o >= params.maxRange
             continue;
         end
 
@@ -23,15 +23,18 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
         % Predicted observation and Jacobian
         [o_hat, Jg] = g(p, params.map, angle, params);
 
+        if all(Jg == 0)
+            continue;
+        end
+
         % Innovation
         v_i = o - o_hat;
         
         % Innovation covariance
         s_i = Jg * Cp * Jg' + r_i;
 
-        % Mahalanobis validation gate
-        e = 1;
-        if v_i*(s_i)*v_i' <= e^2
+        e = 2;   % gate size 
+        if (v_i^2 / s_i) <= e^2
 
             V = [V; v_i];
             G = [G; Jg];
@@ -40,7 +43,7 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
         end
     end
 
-    % Correction step
-    [p, Cp] = ekfUpdate(p, Cp, V, G, R);
+    % [p, Cp] = ekfUpdate(p, Cp, V, G, R);
+
 
 end

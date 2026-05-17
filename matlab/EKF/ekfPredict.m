@@ -1,7 +1,7 @@
 function [predicted_pose, Cp] = ekfPredict(p, Cp, u)
 
     L  = 0.16;
-    kr = 0.001;   % tune these down if ellipse still grows too fast
+    kr = 0.001;   
     kl = 0.001;
 
     dr = u(1);
@@ -35,5 +35,9 @@ function [predicted_pose, Cp] = ekfPredict(p, Cp, u)
           0.5*sin(alpha) + D*cos(alpha)/(2*L),   0.5*sin(alpha) - D*cos(alpha)/(2*L);
           1/L,                                   -1/L                                ];
 
-    Cp = Fp * Cp * Fp' + Fn * Cn * Fn';
+    q_pos   = 0.001;   % position uncertainty [m^2]
+    q_theta = 0.0001;   % heading uncertainty  [rad^2]
+    Q = diag([q_pos, q_pos, q_theta]);
+
+    Cp = Fp * Cp * Fp' + Fn * Cn * Fn' + Q;
 end

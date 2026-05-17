@@ -1,6 +1,6 @@
 rosshutdown; clear; close all;
 
-% path = pathPlanning("ymap", "../data/ymap_path");
+% path = pathPlanning("rmap", "../data/rmap_path");
 
 % Definitions 
 params.kv = 2.0;
@@ -15,13 +15,13 @@ params.dt = 0.05;
 params.toleranceError = 0.2;
 params.ekf = true;
 
-mapParams.map = loadMap("ymap");
+mapParams.map = loadMap("rmap");
 mapParams.scale = 20;
 mapParams.origin = 0;
 mapParams.size = 80;
-mapParams.maxRange = 3.5;
+mapParams.maxRange = 2;
 
-avoidance = "none";
+avoidance = "vfh";
 avoidParams.windowSize     = 10; 
 avoidParams.sectorWidth    = pi/36;                 % angular resolution (~5 deg)
 avoidParams.numSectors     = round(2*pi / avoidParams.sectorWidth);
@@ -36,7 +36,7 @@ avoidParams.smoothSigma    = 1.5;
 
 
 % Path
-data     = load("../data/ymap_path");
+data     = load("../data/rmap_path");
 path     = data.path;
 xWorld   = (path(:,1) - mapParams.origin) / mapParams.scale;
 yWorld   = (path(:,2) - mapParams.origin) / mapParams.scale;
@@ -52,7 +52,7 @@ opts.showTarget = true;
 opts.showVFH = true;
 opts.showCovariance = true;
 opts.showGroundTruth = true; 
-handles = setupPlot(mapParams.map, pathWorld, mapParams.origin, mapParams.scale, opts);
+handles = setupPlot(mapParams.map', pathWorld, mapParams.origin, mapParams.scale, opts);
 
 % Control
 PathTrackingControl(tbot, params, pathWorld, handles, avoidance, mapParams, avoidParams);

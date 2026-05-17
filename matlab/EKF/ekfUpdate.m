@@ -10,7 +10,7 @@ function [p, Cp] = ekfUpdate(p, Cp, V, G, R)
     S = G * Cp * G' + R_mat;
 
     % Kalman gain
-    K = Cp * G' *inv(S);
+    K = Cp * G'/S;
 
     % State update
     p = p + K * V;
@@ -20,6 +20,8 @@ function [p, Cp] = ekfUpdate(p, Cp, V, G, R)
     I = eye(size(Cp));
 
     % Joseph stabilized form
-    Cp = (I - K*G) * Cp;
+    I  = eye(3);
+    IKG = I - K * G;
+    Cp = IKG * Cp* IKG' + K * R_mat * K';
 
 end
