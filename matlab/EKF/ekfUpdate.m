@@ -1,18 +1,25 @@
-function [p, Cp] = ekfUpdate(p, Cp, V, G, R)
+function [p, Cp] = ekfUpdate(p, Cp, V, G, R_mat)
+
     if isempty(V)
         return;
     end
-    
-    n = length(V);
-    R_mat = diag(R);              % n×n
-    
-    S = G * Cp * G' + R_mat;      % n×n innovation covariance
-    K = Cp * G' / S;              % 3×n Kalman gain  (use / not inv)
-    
-    p  = p + K * V;               % 3×1 updated pose
+
+    % Innovation covariance
+    S = G * Cp * G' + R_mat;
+
+    % Kalman gain
+    K = Cp * G' / S;
+
+    % State update
+    p = p + K * V;
+
+    % Normalize heading
     p(3) = normalizeAngle(p(3));
-    
-    % Numerically stable Joseph form (or simple (I-KG) form):
-    I = eye(3);
-    Cp = (I - K * G) * Cp;       % more stable than Cp - K*S*K'
+
+    % Covariance update
+    I = eye(size(Cp));
+
+    % Joseph stabilized form
+    Cp = (I - K * G) * Cp * (I - K * G)' + K * R_mat * K';
+
 end

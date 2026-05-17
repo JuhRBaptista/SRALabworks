@@ -1,45 +1,66 @@
-function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)  
-    
+function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
+
     u = [dsr, dsl];
 
+    % Prediction step
     [p, Cp] = ekfPredict(p, Cp, u);
-            
-    V = [];  % Innovations
-    G = []; % Estimations convariance
-    R = [];  % Noises
 
-    for i=1:10:360
+    V     = [];        % Innovation vector
+    G     = [];        % Stacked Jacobians
+    R_mat = [];        % Block-diagonal measurement covariance
 
-      observation = data.Ranges(i);
+    for i = 1:5:360
 
-      % uncertainty is 3.5% of reading
-      uncertainty = 0.035;
+        distance = data.Ranges(i);
 
-      if isinf(observation) || observation <= 0
-        continue;
-      end
+        if isinf(distance) || distance <= 0
+            continue;
+        end
 
-      R_i = (uncertainty*observation)^2;
+        % LiDAR angle relative to robot frame
+        angle = deg2rad(i - 1);
 
-      % estimate distance according to map (predicted observation)
-      [estimate, Jg] = g(p, params.map, i, params);
+        % Measurement vector
+        z = [angle; distance];
 
-      % innovation
-      V_i = observation - estimate;
+        % Measurement noise
+        sigma_r     = 0.035 * distance;
+        sigma_theta = deg2rad(1);
 
-      % innovation covariance
-      S_i = Jg*Cp*Jg' + R_i;
+        R_i = diag([sigma_theta^2, sigma_r^2]);
 
-      % Mahalanobis validation gate: vin * 1/Si * vin < e^2
-      e = 5;
-      if (V_i^2)/S_i <= e^2
-        V = [V; V_i];
-        G = [G; Jg];
-        R = [R; R_i];
+        % Predicted observation and Jacobian
+        [z_hat, Jz] = g(p, params.map, angle, params);
 
-      end
+        % Ignore invalid observations
+        if all(Jz(:) == 0)
+            continue;
+        end
+
+        % Innovation
+        V_i = z - z_hat;
+
+        % Normalize angular innovation
+        V_i(1) = normalizeAngle(V_i(1));
+
+        % Innovation covariance
+        S_i = Jz * Cp * Jz' + R_i;
+
+        % Mahalanobis validation gate
+        e = 2;
+
+        if V_i' / S_i * V_i <= e^2
+
+            V = [V; V_i];
+
+            G = [G; Jz];
+
+            R_mat = blkdiag(R_mat, R_i);
+
+        end
     end
 
-    [p, Cp] = ekfUpdate(p, Cp, V, G, R);
-   
+    % Correction step
+    [p, Cp] = ekfUpdate(p, Cp, V, G, R_mat);
+
 end

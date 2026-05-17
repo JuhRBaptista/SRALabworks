@@ -21,8 +21,8 @@ mapParams.origin = 0;
 mapParams.size = 80;
 mapParams.maxRange = 3.5;
 
-avoidance = "vfh";
-avoidParams.windowSize    = 10; 
+avoidance = "none";
+avoidParams.windowSize     = 10; 
 avoidParams.sectorWidth    = pi/36;                 % angular resolution (~5 deg)
 avoidParams.numSectors     = round(2*pi / avoidParams.sectorWidth);
 avoidParams.valleyMinWidth = 18;
