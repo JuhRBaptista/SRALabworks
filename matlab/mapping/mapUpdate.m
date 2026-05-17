@@ -1,36 +1,32 @@
 function [map, robotGrid] = mapUpdate(map, data, idx_occ, idx_free, pose, params)
     % mapUpdate- Pure map update logic
-    %
-    % Inputs:
-    %   map      : struct with fields .prob (and .logOdds for "logodds")
-    %   scan     : Nx2 filtered lidar scan in robot frame
-    %   pose     : struct with fields .x .y .theta
-    %   params   : struct with mapSize, scale, origin
-    %   strategy : "binary" (W2) or "logodds" (W4)
-    %
-    % Output:
-    %   map      : updated map struct
 
+    % Extract occupied lidar points and filter invalid scans
     occ_scans = data.Cartesian(idx_occ, :);
     occ_scans = scanFilter(occ_scans);
-
+    
+    % Generate free-space points using truncated lidar rays
     free_scans = truncateFreeRays(data, idx_free, params.lidarMaxRange);
 
-    % 2. UPDATE MAP
+    % Convert scan points from robot frame to world frame
     occWorldPts  = scanToWorld(occ_scans, pose);
     freeWorldPts  = scanToWorld(free_scans, pose);
-
+    
+    % Convert world coordinates to grid coordinates
     occGridPts   = worldToGrid(occWorldPts, params);
     freeGridPts   = worldToGrid(freeWorldPts, params);
-
+    
+    % Robot position in grid coordinates
     robotGrid = worldToGrid([pose.x, pose.y], params);
 
-    % STRATEGY
+    % Map update strategy
     switch params.update
         case "bayesian"
+            % Bayesian occupancy update using log-odds
             map.logOdds   = logOddsUpdate(map.logOdds, robotGrid, occGridPts, freeGridPts, params);
             map.prob      = 1 ./ (1 + exp(-map.logOdds));
         otherwise  % "binary"
+           % Mark occupied cells directly in the occupancy grid
            x1 = occGridPts(:, 1);
            y1 = occGridPts(:, 2);
 
@@ -41,7 +37,7 @@ function [map, robotGrid] = mapUpdate(map, data, idx_occ, idx_free, pose, params
 end
 
 function scan = scanFilter(scan)
-
+    % scanFilter - Removes invalid or out-of-range lidar measurements.
     ranges = sqrt(scan(:,1).^2 + scan(:,2).^2);
 
     maxRange = 3.5;
@@ -55,6 +51,7 @@ function scan = scanFilter(scan)
 end
 
 function freePts = truncateFreeRays(data, idx, maxRange)
+    % truncateFreeRays - Generates free-space endpoints for lidar rays.
     angles = data.Angles(idx);
     freePts = [maxRange * cos(angles), maxRange * sin(angles)];
 end

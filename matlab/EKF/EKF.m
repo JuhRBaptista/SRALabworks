@@ -14,6 +14,11 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
 
       % uncertainty is 3.5% of reading
       uncertainty = 0.035;
+
+      if isinf(observation) || observation <= 0
+        continue;
+      end
+
       R_i = (uncertainty*observation)^2;
 
       % estimate distance according to map (predicted observation)
@@ -36,4 +41,5 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
     end
 
     [p, Cp] = ekfUpdate(p, Cp, V, G, R);
+   
 end

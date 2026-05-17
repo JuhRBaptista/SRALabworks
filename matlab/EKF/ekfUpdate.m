@@ -10,6 +10,7 @@ function [p, Cp] = ekfUpdate(p, Cp, V, G, R)
     K = Cp * G' / S;              % 3×n Kalman gain  (use / not inv)
     
     p  = p + K * V;               % 3×1 updated pose
+    p(3) = normalizeAngle(p(3));
     
     % Numerically stable Joseph form (or simple (I-KG) form):
     I = eye(3);

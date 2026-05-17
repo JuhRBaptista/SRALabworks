@@ -1,8 +1,8 @@
 function [predicted_pose, Cp] = ekfPredict(p, Cp, u)
 
     L  = 0.16;
-    kr = 0.001;   % tune these down if ellipse still grows too fast
-    kl = 0.001;
+    kr = 0.0001;   % tune these down if ellipse still grows too fast
+    kl = 0.0001;
 
     dr = u(1);
     dl = u(2);
@@ -16,8 +16,10 @@ function [predicted_pose, Cp] = ekfPredict(p, Cp, u)
     x   = p(1) + D * cos(alpha);
     y   = p(2) + D * sin(alpha);
     phi = theta  + delta_phi;
+    phi = normalizeAngle(phi);
 
     predicted_pose = [x; y; phi];
+
 
     % Jacobian wrt pose
     Fp = [1, 0, -D*sin(alpha);

@@ -1,6 +1,6 @@
 rosshutdown; clear; close all;
 
-% path = pathPlanning("csqmap", "../data/csqmap_path");
+% path = pathPlanning("ymap", "../data/ymap_path");
 
 % Definitions 
 params.kv = 2.0;
@@ -14,7 +14,7 @@ params.T = 6000;
 params.dt = 0.05;
 params.toleranceError = 0.2;
 
-mapParams.map = loadMap("csqmap");
+mapParams.map = loadMap("ymap");
 mapParams.scale = 20;
 mapParams.origin = 0;
 mapParams.size = 80;
@@ -35,7 +35,7 @@ avoidParams.smoothSigma    = 1.5;
 
 
 % Path
-data     = load("../data/csqmap_path");
+data     = load("../data/ymap_path");
 path     = data.path;
 xWorld   = (path(:,1) - mapParams.origin) / mapParams.scale;
 yWorld   = (path(:,2) - mapParams.origin) / mapParams.scale;
