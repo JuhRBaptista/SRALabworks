@@ -11,6 +11,8 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
     %   dt            : timeskip for integrating
     %   T             : maximun time
     %   toleranceError: minimum distance necessary for stopping
+    %   ekf           : (optional) true/false — use EKF for localisation
+    %                   default: false → uses tbot.readPose() directly
 
     % mapParams
     %   map           : environment map
@@ -18,7 +20,7 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
     %   origin        : map origin
 
     % avoidParameters (if avoidance is VFF or VFH)
-    %  check VFF/VFH header 
+    %  check VFF/VFH headers 
    
     % Default obstacle avoidance mode
     if nargin < 5
@@ -30,6 +32,13 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
     
     if nargin < 8
         slam = false;
+    end
+    
+    % EKF flag — read from params or default to false
+    if isfield(params, 'ekf')
+        useEKF = params.ekf;
+    else
+        useEKF = false;
     end
 
     if slam 
@@ -44,34 +53,44 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
     N = size(path, 1); 
     
     traj = [];
+    gtTraj = [];
     
     r = rateControl(params.rate);  
 
     % Matriz de covariancia em relação a posição
-    Cp = diag([0, 0, 0]);
+    if useEKF
+        Cp = diag([0, 0, 0]);
 
-    tbot.initEncoders();
-    [p(1), p(2), p(3), ~] = tbot.readPose();
-    p(3) = normalizeAngle(p(3));
+        tbot.initEncoders();
+        [p(1), p(2), p(3), ~] = tbot.readPose();
+        p(3) = normalizeAngle(p(3));
+
+
+        gzSub = rossubscriber('/gazebo/model_states');
+        robotName = 'turtlebot3';
+    end
 
         
     for t= 0:params.dt:params.T
         [~, data]  = tbot.readLidar();
         
-        % Get current robot pose
-        % [pose.x, pose.y, pose.theta, ~] = tbot.readPose();
-        % pose.theta = normalizeAngle(pose.theta);
-        
-        % Update the robot's pose estimate using the EKF
-        [dsr, dsl, ~, ~] = tbot.readEncoders();
-        
+        if useEKF
+            [dsr, dsl, ~, ~] = tbot.readEncoders();
+            [p, Cp]          = EKF(dsr, dsl, p, Cp, data, mapParams);
+            
+            pose.x     = p(1);
+            pose.y     = p(2);
+            pose.theta = p(3);
 
-        [p, Cp] = EKF(dsr, dsl, p, Cp, data, mapParams);
+            % Read and store Gazebo ground truth
+            [gt_x, gt_y, gt_theta] = readGroundTruth(gzSub, robotName);
+            gtTraj  = [gtTraj;  gt_x, gt_y, gt_theta];
 
-        pose.x = p(1);
-        pose.y = p(2);
-        pose.theta = p(3);
-
+        else
+            [pose.x, pose.y, pose.theta, ~] = tbot.readPose();
+            pose.theta = normalizeAngle(pose.theta);
+        end
+ 
         % Store trajectory
         traj = [traj; [pose.x, pose.y]];
             
@@ -117,7 +136,7 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
             break;
         end
         
-        updatePlot(handles, traj, pose, target, h, alpha, Cp,  mapParams.map);
+        updatePlot(handles, traj, gtTraj, pose, target, h, alpha, Cp,  mapParams.map);
 
 
         waitfor(r);

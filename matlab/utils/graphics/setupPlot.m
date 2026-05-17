@@ -146,9 +146,19 @@ function plotHandles = setupPlot(map, pathWorld, origin, scale, options)
         legendHandles(end+1)  = h;
         legendLabels{end+1}   = 'VFH Histogram';
     end
+     
+    % ------------------------------------------------------------------
+    % 6. Ground truth trajectory (second line, EKF mode only)
+    % ------------------------------------------------------------------
+     if opt.showGroundTruth
+        h = plot(NaN, NaN, 'g', 'LineWidth', 2);
+        plotHandles.groundTruth = h;
+        legendHandles(end+1)    = h;
+        legendLabels{end+1}     = 'Ground Truth';
+     end
 
     % ------------------------------------------------------------------
-    % 10. Build legend from only the active elements
+    % 11. Build legend from only the active elements
     % ------------------------------------------------------------------
     if ~isempty(legendHandles)
         legend(legendHandles, legendLabels{:});
@@ -176,6 +186,8 @@ function opt = parseOptions(options)
     opt.showTarget     = getOpt(options, 'showTarget',     false);
     opt.showCovariance = getOpt(options, 'showCovariance', false);
     opt.showVFH        = getOpt(options, 'showVFH',        false);
+    opt.showGroundTruth = getOpt(options, 'showGroundTruth', false);
+
 end
 
 % ======================================================================

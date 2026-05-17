@@ -144,12 +144,12 @@ function updatePlot(plotHandles, trajectory, gtTrajectory, robotPose, targetPose
     end
     
     % ------------------------------------------------------------------
-    % 7. Secondary trajectory (gtTrajectory)
+    % 7. Secondary trajectory (trajB)
     %    → Ground truth when EKF is on, unused otherwise
     %    Only drawn if the handle was created at setup (showGroundTruth = true)
     % ------------------------------------------------------------------
-    if opt.showGroundTruth && isfield(plotHandles, 'groundTruth') && ~isempty(gtTrajectory)
-        set(plotHandles.groundTruth, 'XData', gtTrajectory(:,1), 'YData', gtTrajectory(:,2));
+    if opt.showGroundTruth && isfield(plotHandles, 'groundTruth') && ~isempty(trajB)
+        set(plotHandles.groundTruth, 'XData', trajB(:,1), 'YData', trajB(:,2));
     end
 
     % ------------------------------------------------------------------

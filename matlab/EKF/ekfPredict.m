@@ -1,8 +1,8 @@
 function [predicted_pose, Cp] = ekfPredict(p, Cp, u)
 
     L  = 0.16;
-    kr = 0.0001;   % tune these down if ellipse still grows too fast
-    kl = 0.0001;
+    kr = 0.0005;   % tune these down if ellipse still grows too fast
+    kl = 0.0005;
 
     dr = u(1);
     dl = u(2);
