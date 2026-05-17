@@ -1,13 +1,13 @@
 rosshutdown; clear; close all;
 
-% path = pathPlanning("ymap", "../data/ymap_path");
+path = pathPlanning("rmap", "../data/rmap_path2");
 
 % Definitions 
 params.kv = 2.0;
 params.ki = 0.1;
 params.ks = 3.0;
 params.distance = 0.1;
-params.vMax = 0.18;
+params.vMax = 0.14;
 params.wMax = 2.8;
 params.rate = 50;
 params.T = 6000;
@@ -19,7 +19,7 @@ mapParams.map = loadMap("rmap");
 mapParams.scale = 20;
 mapParams.origin = 0;
 mapParams.size = 80;
-mapParams.maxRange = 3.5;
+mapParams.maxRange = 3;
 
 avoidance = "vfh";
 avoidParams.windowSize    = 10; 
@@ -36,7 +36,7 @@ avoidParams.smoothSigma    = 1.5;
 
 
 % Path
-data     = load("../data/rmap_path");
+data     = load("../data/rmap_path2");
 path     = data.path;
 xWorld   = (path(:,1) - mapParams.origin) / mapParams.scale;
 yWorld   = (path(:,2) - mapParams.origin) / mapParams.scale;

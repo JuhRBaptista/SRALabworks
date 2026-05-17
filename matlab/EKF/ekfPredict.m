@@ -35,9 +35,6 @@ function [predicted_pose, Cp] = ekfPredict(p, Cp, u)
           0.5*sin(alpha) + D*cos(alpha)/(2*L),   0.5*sin(alpha) - D*cos(alpha)/(2*L);
           1/L,                                   -1/L                                ];
 
-    q_pos   = 0.001;   % position uncertainty [m^2]
-    q_theta = 0.0001;   % heading uncertainty  [rad^2]
-    Q = diag([q_pos, q_pos, q_theta]);
 
-    Cp = Fp * Cp * Fp' + Fn * Cn * Fn' + Q;
+    Cp = Fp * Cp * Fp' + Fn * Cn * Fn';
 end

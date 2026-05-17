@@ -59,7 +59,7 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
 
     % Matriz de covariancia em relação a posição
     if useEKF
-        Cp = diag([0, 0, 0]);
+        Cp = diag([0.1, 0.1, 0.01]);
 
         tbot.initEncoders();
         [p(1), p(2), p(3), ~] = tbot.readPose();
@@ -145,6 +145,9 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
     
     % Stop robot
     tbot.setVelocity(0, 0);
+
+    save("../data/estimatedTraj_2", "traj");
+    save("../data/groundTruth_2", "gtTraj");
 
     if slam
         saveResults(map.prob, savePath);

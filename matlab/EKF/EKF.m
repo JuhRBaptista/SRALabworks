@@ -18,7 +18,7 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
             continue;
         end
 
-        r_i = (0.035 * o)^2;
+        r_i = (0.05 * o)^2; %0.06
 
         % Predicted observation and Jacobian
         [o_hat, Jg] = g(p, params.map, angle, params);
@@ -33,8 +33,8 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
         % Innovation covariance
         s_i = Jg * Cp * Jg' + r_i;
 
-        e = 2;   % gate size 
-        if (v_i^2 / s_i) <= e^2
+        e = 3;   % gate size 
+        if (v_i * (1/s_i) * v_i) <= e^2   
 
             V = [V; v_i];
             G = [G; Jg];
@@ -43,7 +43,7 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
         end
     end
 
-    % [p, Cp] = ekfUpdate(p, Cp, V, G, R);
+    [p, Cp] = ekfUpdate(p, Cp, V, G, R);
 
 
 end

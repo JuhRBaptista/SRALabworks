@@ -16,12 +16,8 @@ function [p, Cp] = ekfUpdate(p, Cp, V, G, R)
     p = p + K * V;
     p(3) = normalizeAngle(p(3));
 
-    % Covariance update
-    I = eye(size(Cp));
-
     % Joseph stabilized form
     I  = eye(3);
-    IKG = I - K * G;
-    Cp = IKG * Cp* IKG' + K * R_mat * K';
+    Cp =  (I - K * G)* Cp;
 
 end
