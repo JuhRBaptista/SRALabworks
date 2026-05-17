@@ -33,6 +33,7 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
 
     if slam 
         map = initMap(mapParams);
+        mapParams.map = mapParams.initialProb;  % Add this before the for loop
     end
 
     target_index = 1;
@@ -44,13 +45,30 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
     traj = [];
     
     r = rateControl(params.rate);  
-    
+
+    % Matriz de covariancia em relação a posição
+    Cp = diag([0, 0, 0]);
+
+    tbot.initEncoders();
+    [p(1), p(2), p(3), ~] = tbot.readPose();
+    p(3) = normalizeAngle(p(3));
+
+        
     for t= 0:params.dt:params.T
         
         % Get current robot pose
-        [pose.x, pose.y, pose.theta, ~] = tbot.readPose();
-        pose.theta = normalizeAngle(pose.theta);
+        % [pose.x, pose.y, pose.theta, ~] = tbot.readPose();
+        % pose.theta = normalizeAngle(pose.theta);
         
+        % Update the robot's pose estimate using the EKF
+        [dsr, dsl, ~, ~] = tbot.readEncoders();
+        [~, data]  = tbot.readLidar();
+
+        [p, Cp] = EKF(dsr, dsl, p, Cp, data, mapParams);
+        
+        pose.x = p(1);
+        pose.y = p(2);
+        pose.theta = p(3);
         % Store trajectory
         traj = [traj; [pose.x, pose.y]];
             
@@ -59,8 +77,6 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
         waypoint.y = path(target_index, 2);
         
         if slam
-
-            [~, data]  = tbot.readLidar();
             idx_occ    = tbot.getInRangeLidarDataIdx(data);
             idx_free   = tbot.getOutRangeLidarDataIdx(data);
             [map, ~]   = mapUpdate(map, data, idx_occ, idx_free, pose, mapParams);
@@ -94,11 +110,12 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
         end
         
          % Stop when final waypoint is reached
-        if target_index >= N && distance < params.toleranceError
+        if target_index > N && distance < params.toleranceError
+            print("final waypoint")
             break;
         end
         
-        updatePathTrackingPlot(handles, traj, pose, target, h, alpha);
+        updatePathTrackingPlot(handles, traj, pose, target, h, alpha, Cp,  mapParams.map);
 
 
         waitfor(r);

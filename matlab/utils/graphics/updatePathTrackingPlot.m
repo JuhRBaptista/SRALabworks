@@ -1,4 +1,9 @@
-function updatePathTrackingPlot(plotHandles, trajectory, robotPose, targetPose, histogram, alpha, Sigma)
+function updatePathTrackingPlot(plotHandles, trajectory, robotPose, targetPose, histogram, alpha, Sigma, map)
+    
+    % Atualizar mapa
+    if nargin >= 8 && ~isempty(map)
+        set(plotHandles.mapImage, 'CData', map');
+    end
 
     % Atualizar trajetória
     if ~isempty(trajectory)

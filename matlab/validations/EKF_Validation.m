@@ -1,6 +1,6 @@
 rosshutdown; clear; close all;
 
-% path = pathPlanning("ymap", "../data/ymap_path");
+% path = pathPlanning("csqmap", "../data/csqmap_path");
 
 % Definitions 
 params.kv = 2.0;
@@ -14,13 +14,11 @@ params.T = 6000;
 params.dt = 0.05;
 params.toleranceError = 0.2;
 
+mapParams.map = loadMap("csqmap");
 mapParams.scale = 20;
 mapParams.origin = 0;
 mapParams.size = 80;
-mapParams.update = "bayesian";
-mapParams.lidarMaxRange = 2;
-mapParams.initialProb = 0.5*ones(mapParams.size, mapParams.size);
-mapParams.initialLogOdds = zeros(mapParams.size, mapParams.size);
+mapParams.maxRange = 3.5;
 
 avoidance = "vfh";
 avoidParams.windowSize    = 10; 
@@ -36,11 +34,8 @@ avoidParams.smoothSigma    = 1.5;
 % avoidParams.windowSize = 10;
 
 
-slam = true;
-savePath =  '../data/bayesian_ymap_test';
-
 % Path
-data     = load("../data/ymap_path");
+data     = load("../data/csqmap_path");
 path     = data.path;
 xWorld   = (path(:,1) - mapParams.origin) / mapParams.scale;
 yWorld   = (path(:,2) - mapParams.origin) / mapParams.scale;
@@ -52,7 +47,7 @@ tbot = connectRobot("sim");
 tbot.setPose(pathWorld(1, 1), pathWorld(1, 2), 0);
 
 % Initialize Plot
-handles = setupPathTrackingPlot(mapParams.initialProb, pathWorld, mapParams.origin, mapParams.scale);
+handles = setupPathTrackingPlot(mapParams.map, pathWorld, mapParams.origin, mapParams.scale);
 
 % Control
-PathTrackingControl(tbot, params, pathWorld, handles, avoidance, mapParams, avoidParams, slam, savePath);
+PathTrackingControl(tbot, params, pathWorld, handles, avoidance, mapParams, avoidParams);
