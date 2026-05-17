@@ -19,5 +19,9 @@ tbot.setPose(0, 0, 0);
 % Wait for odometry to reset 
 resetOdometry(tbot, [0, 0, 0]);
 
+opts.showMap  = false;
+opts.showPath = false;   
+handles = setupPlot([], [], 0, 20, opts);
+
 % Control
-PoseToPoseControl(tbot, params);
+PoseToPoseControl(tbot, params, handles);

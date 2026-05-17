@@ -15,5 +15,9 @@ params.toleranceError = 0.2;
 tbot = connectRobot("sim");
 tbot.setPose(0, 0, 0.00);
 
+opts.showMap  = false;
+opts.showPath = false;   
+handles = setupPlot([], [], 0, 20, opts);
+
 % Control
-PointToPointControl(tbot, params);
+PointToPointControl(tbot, params, handles);

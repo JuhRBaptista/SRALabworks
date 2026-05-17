@@ -1,4 +1,4 @@
-function PointToPointControl(tbot, params)
+function PointToPointControl(tbot, params, handles)
     % PointToPointControl - Drives the robot to a target position.
     %
     % Required params:
@@ -12,7 +12,7 @@ function PointToPointControl(tbot, params)
     %   toleranceError: minimum distance necessary for stopping
 
     r = rateControl(params.rate);
-    trajectory = zeros(params.maxIterations, 3);
+    traj = [];
 
     % Target position
     target.x = params.target(1);
@@ -24,9 +24,7 @@ function PointToPointControl(tbot, params)
         [pose.x, pose.y, pose.theta, pose.timestamp] = tbot.readPose();
         pose.theta = normalizeAngle(pose.theta);
 
-        % Store trajectory
-        trajectory(it,:) = [pose.x, pose.y, pose.theta];
-
+       
         % Heading error relative to the target
         deltaTheta = getAngularError(pose, target);
         
@@ -49,6 +47,10 @@ function PointToPointControl(tbot, params)
         
         % Send velocity command
         tbot.setVelocity(linearVelocity, angularVelocity);
+
+        % Store trajectory
+        traj = [traj; [pose.x, pose.y, pose.theta]];
+        updatePlot(handles, traj, pose, target, [], 0, [], []);
 
         waitfor(r);    
     

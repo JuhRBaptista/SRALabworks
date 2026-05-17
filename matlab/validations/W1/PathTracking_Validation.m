@@ -31,8 +31,8 @@ tbot = connectRobot("sim");
 tbot.setPose(0, 0, 0);
 
 % Initialize Plot
-map = loadMap("empty");
-handles = setupPathTrackingPlot(map, path, -5, 1);
+opts.showMap  = false;   
+handles = setupPlot([], path, 0, 20, opts);
 
 % Control
 PathTrackingControl(tbot, params, path, handles);

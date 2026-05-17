@@ -1,4 +1,4 @@
-function PoseToPoseControl(tbot, params)
+function PoseToPoseControl(tbot, params, handles)
     % PoseToPoseControl - Drives the robot to a target pose.
     %
     % Required params:
@@ -14,7 +14,7 @@ function PoseToPoseControl(tbot, params)
     %   toleranceErrorAngle: minimum angle necessary for stopping
 
     r = rateControl(params.rate);
-    trajectory = zeros(params.maxIterations, 3);
+    traj = [];
     
     % Target pose
     target.x = params.target(1);
@@ -59,6 +59,10 @@ function PoseToPoseControl(tbot, params)
         
         % Send velocity command
         tbot.setVelocity(linearVelocity, angularVelocity);
+
+        % Store trajectory
+        traj = [traj; [pose.x, pose.y, pose.theta]];
+        updatePlot(handles, traj, pose, target, [], 0, [], []);
 
         waitfor(r);    
     

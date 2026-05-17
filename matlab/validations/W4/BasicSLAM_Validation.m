@@ -52,7 +52,9 @@ tbot = connectRobot("sim");
 tbot.setPose(pathWorld(1, 1), pathWorld(1, 2), 0);
 
 % Initialize Plot
-handles = setupPathTrackingPlot(mapParams.initialProb, pathWorld, mapParams.origin, mapParams.scale);
+opts.showTarget = true;
+opts.showVFH = true;
+handles = setupPlot(mapParams.initialProb, pathWorld, mapParams.origin, mapParams.scale, opts);
 
 % Control
 PathTrackingControl(tbot, params, pathWorld, handles, avoidance, mapParams, avoidParams, slam, savePath);
