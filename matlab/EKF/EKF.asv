@@ -18,29 +18,28 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
             continue;
         end
 
-        r_i = (0.035 * o)^2;
+        r_i = (0.035 * distance)^2;
 
         % Predicted observation and Jacobian
-        [o_hat, Jg] = g(p, params.map, angle, params);
+        o_hat = g(p, params.map, angle, params);
 
         % Innovation
         v_i = o - o_hat;
         
         % Innovation covariance
-        s_i = Jg * Cp * Jg' + r_i;
+        s_i = Jz * Cp * Jz' + r_i;
 
         % Mahalanobis validation gate
-        e = 1;
-        if v_i*(s_i)*v_i' <= e^2
-
+        e = 2;
+        if v_i*(s_i)*s_i' <= e^2
             V = [V; v_i];
-            G = [G; Jg];
+            G = [G; Jz];
             R = [R; r_i];
 
         end
     end
 
     % Correction step
-    [p, Cp] = ekfUpdate(p, Cp, V, G, R);
+    [p, Cp] = ekfUpdate(p, Cp, V, G, R_mat);
 
 end
