@@ -1,6 +1,6 @@
 rosshutdown; clear; close all;
 
-path = pathPlanning("rmap", "../data/rmap_path2");
+% path = pathPlanning("ymap", "../data/ymap_path3");
 
 % Definitions 
 params.kv = 2.0;
@@ -15,7 +15,7 @@ params.dt = 0.05;
 params.toleranceError = 0.2;
 params.ekf = true;
 
-mapParams.map = loadMap("rmap");
+mapParams.map = loadMap("ymap");
 mapParams.scale = 20;
 mapParams.origin = 0;
 mapParams.size = 80;
@@ -36,7 +36,7 @@ avoidParams.smoothSigma    = 1.5;
 
 
 % Path
-data     = load("../data/rmap_path2");
+data     = load("../data/ymap_path");
 path     = data.path;
 xWorld   = (path(:,1) - mapParams.origin) / mapParams.scale;
 yWorld   = (path(:,2) - mapParams.origin) / mapParams.scale;
@@ -52,7 +52,7 @@ opts.showTarget = true;
 opts.showVFH = true;
 opts.showCovariance = true;
 opts.showGroundTruth = true; 
-handles = setupPlot(mapParams.map', pathWorld, mapParams.origin, mapParams.scale, opts);
+handles = setupPlot(mapParams.map, pathWorld, mapParams.origin, mapParams.scale, opts);
 
 % Control
 PathTrackingControl(tbot, params, pathWorld, handles, avoidance, mapParams, avoidParams);

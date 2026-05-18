@@ -43,7 +43,7 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
         end
     end
 
-    [p, Cp] = ekfUpdate(p, Cp, V, G, R);
+    % [p, Cp] = ekfUpdate(p, Cp, V, G, R);
 
 
 end
