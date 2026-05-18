@@ -40,13 +40,12 @@ data     = load("../data/ymap_path");
 path     = data.path;
 xWorld   = (path(:,1) - mapParams.origin) / mapParams.scale;
 yWorld   = (path(:,2) - mapParams.origin) / mapParams.scale;
-
-pathWorld = [xWorld(end), yWorld(end)];
+pathWorld = [xWorld(end, 1), yWorld(end, 2)];
 
 
 % Initialize turtlebot
 tbot = connectRobot("sim");
-tbot.setPose(xWorld(1), yWorld(1), 0);
+tbot.setPose(pathWorld(1, 1), pathWorld(1, 2), 0);
 
 % Initialize Plot
 opts.showTarget = true;

@@ -1,10 +1,19 @@
 function [path] = aStar(map, start, goal)
+    
+    path = [];
+    if start(1) < 1 || start(1) > size(map, 1) || start(2) < 1 || start(2) > size(map, 2)
+        return;
+    end
+    
+    if goal(1) < 1 || goal(1) > size(map, 1) || goal(2) < 1 || goal(2) > size(map, 2)
+        return;
+    end
 
     % DEFINITIONS    
     openList = [start];                                 % List with possible nodes to be visited
     closedSet = false(size(map));                       % List with nodes already visited
     cameFrom = zeros(size(map, 1), size(map, 2), 2);    % 3D Array with nodes visiteds and where they came from;
-    path = [];
+    
         
     fScore = inf(size(map));     % Evaluation function        
     gScore = inf(size(map));     % Cost of the path from starting node to current node
