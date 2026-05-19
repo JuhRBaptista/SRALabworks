@@ -1,13 +1,13 @@
 function [path] = aStar(map, start, goal)
     
-    % path = [];
-    % if start(1) < 1 || start(1) > size(map, 1) || start(2) < 1 || start(2) > size(map, 2)
-    %     return;
-    % end
-    % 
-    % if goal(1) < 1 || goal(1) > size(map, 1) || goal(2) < 1 || goal(2) > size(map, 2)
-    %     return;
-    % end
+    path = [];
+    if start(1) < 1 || start(1) > size(map, 1) || start(2) < 1 || start(2) > size(map, 2)
+        return;
+    end
+
+    if goal(1) < 1 || goal(1) > size(map, 1) || goal(2) < 1 || goal(2) > size(map, 2)
+        return;
+    end
 
     % DEFINITIONS    
     openList = [start];                                 % List with possible nodes to be visited

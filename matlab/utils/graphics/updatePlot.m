@@ -1,4 +1,4 @@
-function updatePlot(plotHandles, trajectory, gtTrajectory, robotPose, targetPose, histogram, alpha, Sigma, map)
+function updatePlot(plotHandles, trajectory, gtTrajectory, robotPose, targetPose, pathWorld,  histogram, alpha, Sigma, map)
 % updatePathTrackingPlot - Refreshes all active navigation plot elements each iteration.
 %
 % USAGE:
@@ -150,6 +150,17 @@ function updatePlot(plotHandles, trajectory, gtTrajectory, robotPose, targetPose
     % ------------------------------------------------------------------
     if opt.showGroundTruth && isfield(plotHandles, 'groundTruth') && ~isempty(gtTrajectory)
         set(plotHandles.groundTruth, 'XData', gtTrajectory(:,1), 'YData', gtTrajectory(:,2));
+    end
+
+    % ------------------------------------------------------------------
+    % Dynamic reference path update
+    % ------------------------------------------------------------------
+    if opt.showPath && isfield(plotHandles, 'path') && ...
+       nargin >= 6 && ~isempty(pathWorld)
+    
+        set(plotHandles.path, ...
+            'XData', pathWorld(:,1), ...
+            'YData', pathWorld(:,2));
     end
 
     % ------------------------------------------------------------------

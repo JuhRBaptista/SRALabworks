@@ -85,12 +85,26 @@ function plotHandles = setupPlot(map, pathWorld, origin, scale, options)
     % 4. Reference path (optional)
     %    Drawn once at setup; not updated during the loop
     % ------------------------------------------------------------------
-    if opt.showPath && ~isempty(pathWorld)
-        h = plot(pathWorld(:,1), pathWorld(:,2), ...
+    if opt.showPath
+
+        % Create empty path handle
+        h = plot(NaN, NaN, ...
                  'r--', 'LineWidth', 2);
-        plotHandles.path  = h;
+    
+        plotHandles.path = h;
+    
+        % If an initial path already exists, draw it
+        if ~isempty(pathWorld)
+    
+            set(plotHandles.path, ...
+                'XData', pathWorld(:,1), ...
+                'YData', pathWorld(:,2));
+    
+        end
+    
         legendHandles(end+1) = h;
         legendLabels{end+1}  = 'Path';
+    
     end
 
     % ------------------------------------------------------------------

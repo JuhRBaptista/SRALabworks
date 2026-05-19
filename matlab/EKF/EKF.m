@@ -34,7 +34,7 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
         s_i = Jg * Cp * Jg' + r_i;
         
 
-        e = 4;   % gate size 
+        e = 5;   % gate size 
         if (v_i * (1/s_i) * v_i') <= e^2   
             V = [V; v_i];
             G = [G; Jg];

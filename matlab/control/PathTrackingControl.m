@@ -60,11 +60,13 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
     % Matriz de covariancia em relação a posição
     Cp = diag(zeros(1,3));
     if useEKF
-        Cp = diag([0.01, 0.01, 0.01]);
-
+        
         tbot.initEncoders();
-        [p(1), p(2), p(3), ~] = tbot.readPose();
-        p(3) = normalizeAngle(p(3));
+
+        [p, path] = getRoute(tbot, path(end, :), mapParams);
+        % Number of waypoints
+        N = size(path, 1); 
+        Cp = diag([1.0, 1.0, (pi/4)^2]); 
 
         gzSub = rossubscriber('/gazebo/model_states');
         robotName = 'turtlebot3';
@@ -137,7 +139,7 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
             break;
         end
         
-        updatePlot(handles, traj, gtTraj, pose, target, h, alpha, Cp,  mapParams.map);
+        updatePlot(handles, traj, gtTraj, pose, target, path, h, alpha, Cp,  mapParams.map);
 
 
         waitfor(r);

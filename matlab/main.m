@@ -1,7 +1,7 @@
 rosshutdown; clear; close all;
 
 % path = pathPlanning("../data/house.png", "../data/house_path");
-% 
+
 % Definitions 
 params.kv = 2.0;
 params.ki = 0.1;
@@ -36,24 +36,26 @@ avoidParams.smoothSigma    = 1.5;
 
 
 % Path
-data     = load("../data/house_path");
-path     = data.path;
-xWorld   = (path(:,1) - mapParams.origin) / mapParams.scale;
-yWorld   = (path(:,2) - mapParams.origin) / mapParams.scale;
+% data     = load("../data/house_path");
+% path     = data.path;
+% xWorld   = (path(:,1) - mapParams.origin) / mapParams.scale;
+% yWorld   = (path(:,2) - mapParams.origin) / mapParams.scale;
+% 
+% pathWorld = [xWorld, yWorld];
 
-pathWorld = [xWorld, yWorld];
-
+start = gridToWorld([47, 241], mapParams);
+goal = gridToWorld([152, 257], mapParams);
 
 % Initialize turtlebot
 tbot = connectRobot("sim");
-tbot.setPose(xWorld(1), yWorld(1), 0);
+tbot.setPose(start(1), start(2), 0);
 
 % Initialize Plot
 opts.showTarget = true;
 opts.showVFH = true;
 opts.showCovariance = true;
 opts.showGroundTruth = true; 
-handles = setupPlot(mapParams.map, pathWorld, mapParams.origin, mapParams.scale, opts);
+handles = setupPlot(mapParams.map, [], mapParams.origin, mapParams.scale, opts);
 
 % Control
-PathTrackingControl(tbot, params, pathWorld, handles, avoidance, mapParams, avoidParams);
+PathTrackingControl(tbot, params, goal, handles, avoidance, mapParams, avoidParams);
