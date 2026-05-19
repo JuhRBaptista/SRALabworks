@@ -62,12 +62,18 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
     if useEKF
         
         tbot.initEncoders();
-
-        [p, path] = getRoute(tbot, path(end, :), mapParams);
-        % Number of waypoints
-        N = size(path, 1); 
-        Cp = diag([1.0, 1.0, (pi/4)^2]); 
-
+        
+        if params.estimatePose
+            [p, path] = getRoute(tbot, path(end, :), mapParams);
+            % Number of waypoints
+            N = size(path, 1); 
+            Cp = diag([1.0, 1.0, (pi/4)^2]); 
+        else
+            [p(1), p(2), p(3), ~] = tbot.readPose();
+            p(3) = normalizeAngle(p(3));
+            Cp = diag([0.01, 0.01, 0.001]);
+        end      
+        
         gzSub = rossubscriber('/gazebo/model_states');
         robotName = 'turtlebot3';
     end
@@ -148,8 +154,7 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
     % Stop robot
     tbot.setVelocity(0, 0);
 
-    save("../data/estimatedTraj_2", "traj");
-    save("../data/groundTruth_2", "gtTraj");
+    save("../data/noCorrected_trajs", "traj", "gtTraj");
 
     if slam
         saveResults(map.prob, savePath);

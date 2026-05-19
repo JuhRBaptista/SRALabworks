@@ -7,13 +7,14 @@ params.kv = 2.0;
 params.ki = 0.1;
 params.ks = 3.0;
 params.distance = 0.1;
-params.vMax = 0.14;
+params.vMax = 0.18;
 params.wMax = 2.8;
 params.rate = 50;
 params.T = 6000;
 params.dt = 0.05;
 params.toleranceError = 0.2;
 params.ekf = true;
+params.estimatePose = true;
 
 mapParams.map = loadMap("../data/house.png");
 mapParams.scale = 20;

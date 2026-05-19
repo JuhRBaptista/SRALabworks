@@ -7,7 +7,6 @@ function p = globalLocalize(tbot, params, nScans)
     map    = params.map;
     scale  = params.scale;
     origin = params.origin;
-    % [p(1), p(2), p(3), ~] = tbot.readPose();
 
     fprintf('[GlobalLocalize] Collecting %d scans...\n', nScans);
     allRanges = zeros(nScans, 360);
@@ -22,8 +21,8 @@ function p = globalLocalize(tbot, params, nScans)
     validMask = ~isinf(medianRanges) & medianRanges > 0.05 & ...
                 medianRanges < params.maxRange;
 
-    nAngles = 5;                               % 10 degree resolution
-    angles  = [0];
+    nAngles = 4;                               % 10 degree resolution
+    angles  = [0, pi/2, pi, 3*pi/2];
 
     robot_radius = 0.105;
     robot_pixels = round(robot_radius * scale);

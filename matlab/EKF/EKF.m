@@ -17,8 +17,9 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
         if isinf(o) || o <= 0 || o >= params.maxRange
             continue;
         end
-
-        r_i = (0.035 * o)^2; %0.06
+        
+        l_confidence = 0.035;
+        r_i = (l_confidence * o)^2; %0.06
 
         % Predicted observation and Jacobian
         [o_hat, Jg] = g(p, params.map, angle, params);
@@ -43,7 +44,6 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
         end
     end
     
-    length(V)
 
     [p, Cp] = ekfUpdate(p, Cp, V, G, R);
 
