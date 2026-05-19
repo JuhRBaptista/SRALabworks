@@ -1,8 +1,8 @@
 function [predicted_pose, Cp] = ekfPredict(p, Cp, u)
 
     L  = 0.16;
-    kr = 0.005;   
-    kl = 0.005;
+    kr = 0.001;   
+    kl = 0.001;
 
     dr = u(1);
     dl = u(2);
@@ -37,7 +37,7 @@ function [predicted_pose, Cp] = ekfPredict(p, Cp, u)
 
 
     % Ruído mínimo garantido
-    Q = diag([0.0001, 0.0001, 0.001]);
+    Q = diag([0.00001, 0.00001, 0.0001]);
     
     Cp = Fp * Cp * Fp' + Fn * Cn * Fn' + Q;
 end

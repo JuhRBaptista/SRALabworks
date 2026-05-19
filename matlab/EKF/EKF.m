@@ -32,18 +32,18 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
         
         % Innovation covariance
         s_i = Jg * Cp * Jg' + r_i;
+        
 
         e = 4;   % gate size 
-        if (v_i * (1/s_i) * v_i) <= e^2   
-
+        if (v_i * (1/s_i) * v_i') <= e^2   
             V = [V; v_i];
             G = [G; Jg];
             R = [R; r_i];
-            
+           
         end
     end
     
-    % length(V);
+    length(V)
 
     [p, Cp] = ekfUpdate(p, Cp, V, G, R);
 
