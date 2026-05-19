@@ -1,6 +1,6 @@
 rosshutdown; clear; close all;
 
-% path = pathPlanning("ymap", "../data/ymap_path3");
+% path = pathPlanning("../data/house.png", "../data/house_path");
 
 % Definitions 
 params.kv = 2.0;
@@ -15,11 +15,11 @@ params.dt = 0.05;
 params.toleranceError = 0.2;
 params.ekf = true;
 
-mapParams.map = loadMap("ymap");
+mapParams.map = loadMap("../data/house.png");
 mapParams.scale = 20;
-mapParams.origin = 0;
-mapParams.size = 80;
-mapParams.maxRange = 3;
+mapParams.origin = 175;
+mapParams.size = 350;
+mapParams.maxRange = 2;
 
 avoidance = "vfh";
 avoidParams.windowSize    = 10; 
@@ -36,12 +36,12 @@ avoidParams.smoothSigma    = 1.5;
 
 
 % Path
-data     = load("../data/ymap_path");
+data     = load("../data/house_path");
 path     = data.path;
 xWorld   = (path(:,1) - mapParams.origin) / mapParams.scale;
 yWorld   = (path(:,2) - mapParams.origin) / mapParams.scale;
 
-pathWorld = [xWorld(end), yWorld(end)];
+pathWorld = [xWorld, yWorld];
 
 
 % Initialize turtlebot

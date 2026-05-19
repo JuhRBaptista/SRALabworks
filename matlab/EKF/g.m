@@ -29,8 +29,7 @@ function [o, Jg] = g(p, map, angle, params)
 
             hit = true;
             o = d;
-            
-            Jg = [-cos(beam_angle), -sin(beam_angle),0];                                     
+            Jg = [-cos(beam_angle), -sin(beam_angle), 0];                                 
             break;
         end
 

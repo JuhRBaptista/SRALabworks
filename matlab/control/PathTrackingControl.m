@@ -54,14 +54,17 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
     
     traj = [];
     gtTraj = [];
+    
     r = rateControl(params.rate);  
 
     % Matriz de covariancia em relação a posição
+    Cp = diag(zeros(1,3));
     if useEKF
+        Cp = diag([0.01, 0.01, 0.01]);
 
         tbot.initEncoders();
-        p = zeros(1,3);
-        Cp = diag([4, 4, (pi)^2]);
+        [p(1), p(2), p(3), ~] = tbot.readPose();
+        p(3) = normalizeAngle(p(3));
 
         gzSub = rossubscriber('/gazebo/model_states');
         robotName = 'turtlebot3';
@@ -80,16 +83,6 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
             pose.y     = p(2);
             pose.theta = p(3);
 
-            if trace(Cp) > 1
-                path1 = aStar(mapParams.map, p, path(end, :));
-                if ~isempty(path1)
-                    xWorld   = (path1(:,1) - mapParams.origin) / mapParams.scale;
-                    yWorld   = (path1(:,2) - mapParams.origin) / mapParams.scale;
-                    path = [xWorld, yWorld];
-                end
-                % updatePlot(handles, traj, gtTraj, pose, target, [], [], Cp,  mapParams.map);
-                % continue;
-            end
             % Read and store Gazebo ground truth
             [gt_x, gt_y, gt_theta] = readGroundTruth(gzSub, robotName);
             gtTraj  = [gtTraj;  gt_x, gt_y, gt_theta];
