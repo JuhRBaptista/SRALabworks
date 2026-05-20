@@ -17,9 +17,8 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
         if isinf(o) || o <= 0 || o >= params.maxRange
             continue;
         end
-        
-        l_confidence = 0.035;
-        r_i = (l_confidence * o)^2; %0.06
+
+        r_i = (0.035 * o)^2; 
 
         % Predicted observation and Jacobian
         [o_hat, Jg] = g(p, params.map, angle, params);
@@ -35,7 +34,7 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
         s_i = Jg * Cp * Jg' + r_i;
         
 
-        e = 5;   % gate size 
+        e = 4;   % gate size 
         if (v_i * (1/s_i) * v_i') <= e^2   
             V = [V; v_i];
             G = [G; Jg];
@@ -44,7 +43,7 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
         end
     end
     
-
+    % update
     [p, Cp] = ekfUpdate(p, Cp, V, G, R);
 
 

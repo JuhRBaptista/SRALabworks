@@ -30,7 +30,7 @@ function [predicted_pose, Cp] = ekfPredict(p, Cp, u)
     Cn = [kr*abs(dr), 0;
           0,          kl*abs(dl)];
 
-    % Jacobian wrt noise  — note /(2*L), not /2*L
+    % Jacobian wrt noise 
     Fn = [0.5*cos(alpha) - D*sin(alpha)/(2*L),   0.5*cos(alpha) + D*sin(alpha)/(2*L);
           0.5*sin(alpha) + D*cos(alpha)/(2*L),   0.5*sin(alpha) - D*cos(alpha)/(2*L);
           1/L,                                   -1/L                                ];

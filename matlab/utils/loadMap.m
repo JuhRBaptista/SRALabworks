@@ -8,5 +8,5 @@ function [map] = loadMap(map_name)
         image = imread(map_name);
     end
 
-    map = flipud(1 - double(image(:, :, 1)) ./ 255);
+    map = 1 - double(image(:, :, 1)) ./ 255;
 end

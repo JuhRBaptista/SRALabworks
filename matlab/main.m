@@ -6,7 +6,7 @@ rosshutdown; clear; close all;
 params.kv = 2.0;
 params.ki = 0.1;
 params.ks = 3.0;
-params.distance = 0.1;
+params.distance = 0.2;
 params.vMax = 0.18;
 params.wMax = 2.8;
 params.rate = 50;
@@ -44,12 +44,12 @@ avoidParams.smoothSigma    = 1.5;
 % 
 % pathWorld = [xWorld, yWorld];
 
-start = gridToWorld([47, 241], mapParams);
-goal = gridToWorld([152, 257], mapParams);
+start = gridToWorld([193, 209], mapParams);
+goal = gridToWorld([242, 192], mapParams);
 
 % Initialize turtlebot
 tbot = connectRobot("sim");
-tbot.setPose(start(1), start(2), 0);
+tbot.setPose(start(1), start(2), pi/2);
 
 % Initialize Plot
 opts.showTarget = true;

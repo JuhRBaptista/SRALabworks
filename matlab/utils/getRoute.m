@@ -11,7 +11,7 @@ function [p, path] = getRoute(tbot, target, mapParams)
     y = round((target(2) * mapParams.scale) + mapParams.origin);
     gridTarget = [x, y];
 
-    gridPath = aStar(flipud(mapParams.map), gridPose, gridTarget);
+    gridPath = aStar(mapParams.map, gridPose, gridTarget);
 
     path = gridToWorld(gridPath, mapParams);
 end
