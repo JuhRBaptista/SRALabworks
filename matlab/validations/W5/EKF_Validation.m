@@ -1,6 +1,6 @@
 rosshutdown; clear; close all;
 
-% path = pathPlanning("../data/house.png", "../data/house_path");
+% path = pathPlanning("../data/house.png", "../data/house_path1", true);
 % 
 % Definitions 
 params.kv = 2.0;
@@ -14,8 +14,9 @@ params.T = 6000;
 params.dt = 0.05;
 params.toleranceError = 0.2;
 params.ekf = true;
+params.estimatePose = false;
 
-mapParams.map = loadMap("../data/house.png");
+mapParams.map = loadMap("../data/house.png", true);
 mapParams.scale = 20;
 mapParams.origin = 175;
 mapParams.size = 350;

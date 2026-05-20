@@ -1,6 +1,7 @@
 rosshutdown; clear; close all;
 
-% path = pathPlanning("ymap", "../data/ymap_path");
+% path = pathPlanning("ymap", "../data/ymap_avoid_path");
+
 % Definitions 
 params.kv = 2.0;
 params.ki = 0.1;
@@ -19,11 +20,11 @@ mapParams.origin = 0;
 
 avoidance = "vff";
 avoidParams.kAtt = 1.0;
-avoidParams.kRep = 1.0;
+avoidParams.kRep = 0.5;
 avoidParams.windowSize = 10;
 
 % Path
-data     = load("../data/ymap_path");
+data     = load("../data/ymap_avoid_path");
 path     = data.path;
 xWorld   = (path(:,1) - mapParams.origin) / mapParams.scale;
 yWorld   = (path(:,2) - mapParams.origin) / mapParams.scale;

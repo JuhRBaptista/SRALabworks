@@ -64,10 +64,10 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
         tbot.initEncoders();
         
         if params.estimatePose
-            [p, path] = getRoute(tbot, path(end, :), mapParams);
+            [p, path] = getRoute(tbot, path, mapParams);
             % Number of waypoints
             N = size(path, 1); 
-            Cp = diag([1.0, 1.0, (pi/4)^2]); 
+            Cp = diag([0.1, 0.1, 0.1]); 
         else
             [p(1), p(2), p(3), ~] = tbot.readPose();
             p(3) = normalizeAngle(p(3));

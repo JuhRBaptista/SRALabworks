@@ -1,17 +1,36 @@
-function [p, path] = getRoute(tbot, target, mapParams)
+function [p, path] = getRoute(tbot, targets, mapParams)
     
+    % Estimate initial pose via global localization
     p  = globalLocalize(tbot, mapParams);
     p(3) = normalizeAngle(p(3));
 
+    % Convert estimated pose to grid coordinates
     x = round((p(1) * mapParams.scale) + mapParams.origin);
     y = round((p(2) * mapParams.scale) + mapParams.origin);
     gridPose = [x, y];
+    
+    gridPath = [];
 
-    x = round((target(1) * mapParams.scale) + mapParams.origin);
-    y = round((target(2) * mapParams.scale) + mapParams.origin);
-    gridTarget = [x, y];
+    % Plan A* path through each target sequentially
+    for i=1:size(targets, 1)
+        target = targets(i, :);
 
-    gridPath = aStar(mapParams.map, gridPose, gridTarget);
+        % Convert target to grid coordinates
+        x = round((target(1) * mapParams.scale) + mapParams.origin);
+        y = round((target(2) * mapParams.scale) + mapParams.origin);
+        gridTarget = [x, y];
+        
+        % Compute optimal path from current grid pose to target
+        subpath = aStar(mapParams.map, gridPose, gridTarget);
+        gridPath = [gridPath; subpath];
 
-    path = gridToWorld(gridPath, mapParams);
+        % Advance starting point to current target
+        gridPose = gridTarget;
+    end
+
+    % Convert full grid path back to world coordinates
+    xWorld   = (gridPath(:,1) - mapParams.origin) / mapParams.scale;
+    yWorld   = (gridPath(:,2) - mapParams.origin) / mapParams.scale;
+    
+    path = [xWorld, yWorld];
 end

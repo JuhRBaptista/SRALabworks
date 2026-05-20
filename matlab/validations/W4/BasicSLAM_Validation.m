@@ -1,6 +1,6 @@
 rosshutdown; clear; close all;
 
-% path = pathPlanning("ymap", "../data/ymap_path");
+% path = pathPlanning("ymap", "../data/ymap_mapping");
 
 % Definitions 
 params.kv = 2.0;
@@ -15,8 +15,8 @@ params.dt = 0.05;
 params.toleranceError = 0.2;
 
 mapParams.scale = 20;
-mapParams.origin = 175;
-mapParams.size = 350;
+mapParams.origin = 0;
+mapParams.size = 80;
 mapParams.update = "bayesian";
 mapParams.lidarMaxRange = 2;
 mapParams.initialProb = 0.5*ones(mapParams.size, mapParams.size);
@@ -37,13 +37,13 @@ avoidParams.smoothSigma    = 1.5;
 
 
 slam = true;
-savePath =  '../data/house';
+savePath =  '../data/ymap_map';
 
 % Path
-data     = load("../data/ymap_path3");
+data     = load("../data/ymap_mapping");
 path     = data.path;
-xWorld   = (path(:,2) - mapParams.origin) / mapParams.scale;
-yWorld   = (path(:,1) - mapParams.origin) / mapParams.scale;
+xWorld   = (path(:,1) - mapParams.origin) / mapParams.scale;
+yWorld   = (path(:,2) - mapParams.origin) / mapParams.scale;
 pathWorld = [xWorld, yWorld];
 
 
