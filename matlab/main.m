@@ -1,6 +1,6 @@
 rosshutdown; clear; close all;
 
-% path = pathPlanning("rmap", "../data/rmap")
+% path = pathPlanning("rmap", "../data/rmap_mapping")
 
 % Definitions 
 params.kv = 2.0;
@@ -14,12 +14,12 @@ params.T = 6000;
 params.dt = 0.05;
 params.toleranceError = 0.15;
 params.finalToleranceError = 0.1;
-params.ekf = true;
+params.ekf = false;
 params.estimatePose = false;
 
 map = loadMap("rmap");
 log_odds_map = log(map ./ (1 - map));
-
+log_odds_map= max(-5, min(5, log_odds_map));
 mapParams.map = map;
 mapParams.update = "bayesian";
 mapParams.initialProb = map;
@@ -27,8 +27,8 @@ mapParams.initialLogOdds = log_odds_map;
 mapParams.scale = 40;
 mapParams.origin = 0;
 mapParams.size = [120, 80];
-mapParams.maxRange = 3;
-mapParams.lidarMaxRange = 3.5;
+mapParams.maxRange = 2;
+mapParams.lidarMaxRange = 2;
 
 avoidance = "vfh";
 avoidParams.windowSize    = 10; 
@@ -44,13 +44,13 @@ avoidParams.smoothSigma    = 1.5;
 % avoidParams.windowSize = 10;
 
 % Path
-data     = load("../data/rmap");
+data     = load("../data/rmap_mapping");
 path     = data.path;
 xWorld   = (path(:,1) - mapParams.origin) / mapParams.scale;
 yWorld   = (path(:,2) - mapParams.origin) / mapParams.scale;
 
 pathWorld = [xWorld, yWorld];
-slam = false;
+slam = true;
 
 % Initialize turtlebot
 tbot = connectRobot("sim");

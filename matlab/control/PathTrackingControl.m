@@ -123,7 +123,7 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
         phi      = getAngularError(pose, target);
 
         % PI distance controller + heading controller
-        e_int            = e_int + e * params.dt;
+        e_int           = e_int + e * params.dt;
         linearVelocity  = params.kv * e + params.ki * e_int;
         angularVelocity = params.ks * phi;
 
