@@ -49,7 +49,7 @@ function p = globalLocalize(tbot, params, nScans)
     p          = [0; 0; 0];
     
     % Brute-force search over candidate positions and orientations
-    for k = 1:5:length(xW)
+    for k = 1:length(xW)
         for a = 1:length(angles)
             candidate = [xW(k); yW(k); angles(a)];
             inliers   = 0;
