@@ -1,8 +1,8 @@
 function [predicted_pose, Cp] = ekfPredict(p, Cp, u)
 
     L  = 0.16;
-    kr = 0.001;   
-    kl = 0.001;
+    kr = 0.0005;   
+    kl = 0.0005;
 
     dr = u(1);
     dl = u(2);

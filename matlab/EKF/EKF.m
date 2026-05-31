@@ -9,7 +9,7 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
     G = [];        % Stacked Jacobians
     R = [];        % Block-diagonal measurement covariance
 
-    for i = 1:5:360
+    for i = 1:360
         % LiDAR angle relative to robot frame
         angle = deg2rad(i-1);
         o = data.Ranges(i);
@@ -34,7 +34,7 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
         s_i = Jg * Cp * Jg' + r_i;
         
 
-        e = 4;   % gate size 
+        e = 2.5;   % gate size 
         if (v_i * (1/s_i) * v_i') <= e^2   
             V = [V; v_i];
             G = [G; Jg];
@@ -42,6 +42,9 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
            
         end
     end
+
+    length(V)
+
     
     % update
     [p, Cp] = ekfUpdate(p, Cp, V, G, R);
