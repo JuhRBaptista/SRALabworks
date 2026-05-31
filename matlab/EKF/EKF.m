@@ -9,7 +9,7 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
     G = [];        % Stacked Jacobians
     R = [];        % Block-diagonal measurement covariance
 
-    for i = 1:360
+    for i = 1:2:360
         % LiDAR angle relative to robot frame
         angle = deg2rad(i-1);
         o = data.Ranges(i);
@@ -44,6 +44,9 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
     end
 
     length(V)
+    % if length(V) < 5
+    %     return;
+    % end
 
     
     % update

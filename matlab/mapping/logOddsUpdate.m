@@ -10,7 +10,8 @@ function logOdds = logOddsUpdate(logOdds, robotGrid, occGrid, freeGrid, params)
     % Robot grid position
     x0 = robotGrid(1);
     y0 = robotGrid(2);
-    M  = params.size;
+    width  = params.size(1);
+    height = params.size(2);
 
     % Process occupied and free-space rays
     pts = [occGrid; freeGrid];
@@ -20,14 +21,14 @@ function logOdds = logOddsUpdate(logOdds, robotGrid, occGrid, freeGrid, params)
         freeCells = bresenham(x0, y0, pts(i,1), pts(i,2));
 
         % Keep only valid map cells
-        valid = freeCells(:,1) > 0 & freeCells(:,1) <= M & ...
-                freeCells(:,2) > 0 & freeCells(:,2) <= M;
+        valid = freeCells(:,1) > 0 & freeCells(:,1) <= width & ...
+                freeCells(:,2) > 0 & freeCells(:,2) <= height;
 
         freeCells = freeCells(valid, :);
 
         % Update free-space probabilities
         if ~isempty(freeCells)
-            idx = sub2ind([M M], freeCells(:,1), freeCells(:,2));
+            idx = sub2ind([width height], freeCells(:,1), freeCells(:,2));
             logOdds(idx) = logOdds(idx) + l_free;
         end
     end
@@ -37,10 +38,10 @@ function logOdds = logOddsUpdate(logOdds, robotGrid, occGrid, freeGrid, params)
     y1 = occGrid(:,2);
     
     % Keep only valid occupied cells
-    validOcc = x1 > 0 & x1 <= M & y1 > 0 & y1 <= M;
+    validOcc = x1 > 0 & x1 <= width & y1 > 0 & y1 <= height;
 
     % Update occupied probabilities
-    occIdx = sub2ind([M M], x1(validOcc), y1(validOcc));
+    occIdx = sub2ind([width height], x1(validOcc), y1(validOcc));
     logOdds(occIdx) = logOdds(occIdx) + l_occ;
 
     logOdds = clamp(logOdds, l_min, l_max);

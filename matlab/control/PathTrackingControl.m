@@ -141,7 +141,7 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
         end
         
          % Stop when final waypoint is reached
-        if target_index >= N && distance < params.toleranceError
+        if target_index >= N && distance < params.finalToleranceError
             break;
         end
         

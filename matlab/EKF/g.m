@@ -30,7 +30,7 @@ function [o, Jg] = g(p, map, angle, params)
             o   = d;
 
             % Measurement Jacobian
-            Jg  = [-cos(beam_angle), -sin(beam_angle), 0];
+            Jg  = [-cos(beam_angle), -sin(beam_angle),  -d*sin(beam_angle)];
             break;
         end
     end
