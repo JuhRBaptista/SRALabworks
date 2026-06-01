@@ -10,23 +10,29 @@ function [p, path] = getRoute(tbot, targets, mapParams, p0)
     % ... resto inalterado
 
     % Convert estimated pose to grid coordinates
-    x = round((p(1) * mapParams.scale) + mapParams.origin);
-    y = round((p(2) * mapParams.scale) + mapParams.origin);
+    x = round((p(1) * mapParams.scale) + mapParams.origin + 1);
+    y = round((p(2) * mapParams.scale) + mapParams.origin + 1);
     gridPose = [x, y];
     
     gridPath = [];
+
+     % Prepare map
+    robot_pixels = round(0.11 * mapParams.scale);
+    se           = strel('disk', robot_pixels);
+    map          = imdilate(mapParams.map, se);
+
 
     % Plan A* path through each target sequentially
     for i=1:size(targets, 1)
         target = targets(i, :);
 
         % Convert target to grid coordinates
-        x = round((target(1) * mapParams.scale) + mapParams.origin);
-        y = round((target(2) * mapParams.scale) + mapParams.origin);
+        x = round((target(1) * mapParams.scale) + mapParams.origin + 1);
+        y = round((target(2) * mapParams.scale) + mapParams.origin + 1);
         gridTarget = [x, y];
         
         % Compute optimal path from current grid pose to target
-        subpath = aStar(mapParams.map, gridPose, gridTarget);
+        subpath = aStar(map, gridPose, gridTarget);
         gridPath = [gridPath; subpath];
 
         % Advance starting point to current target

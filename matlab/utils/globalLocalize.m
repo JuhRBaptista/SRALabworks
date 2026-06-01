@@ -1,14 +1,4 @@
 function [p, residual] = globalLocalize(lddata, map, scale, origin, maxRange, sensor_offset)
-% globalLocalize  Two-stage global pose estimation.
-%
-%   STAGE 1 — Distance-transform pre-filter (fast)
-%     Scores all candidate poses using the DT endpoint trick.
-%     Cheap but ambiguous on symmetric maps — used only to shortlist.
-%
-%   STAGE 2 — Ray-cast re-scoring of top candidates (accurate)
-%     The top topN poses from stage 1 are re-scored using proper ray-
-%     casting through g.m, which checks BOTH distance and direction to
-%     the nearest wall.  This breaks symmetry and selects the true pose.
 
     if nargin < 6, sensor_offset = [0; 0]; end
 
@@ -29,25 +19,26 @@ function [p, residual] = globalLocalize(lddata, map, scale, origin, maxRange, se
     nBeams = 48;
     idx    = round(linspace(1, numel(ranges), nBeams));
     rMeas  = ranges(idx);
-    aMeas  = angles(idx);   % in robot frame
+    aMeas  = angles(idx);
 
     % ------------------------------------------------------------------ %
-    % 1.  Distance transform  (computed once, used throughout stage 1)
+    % 1.  Distance transform
     % ------------------------------------------------------------------ %
     obstMask = map >= 0.5;
-    D_m      = bwdist(obstMask) / scale;   % distance to nearest wall [m]
+    D_m      = bwdist(obstMask) / scale;
 
     [H, W] = size(map);
-    w2r = @(x) max(1, min(H, round(x * scale + origin + 1)));
-    w2c = @(y) max(1, min(W, round(y * scale + origin + 1)));
+    w2r = @(x) max(1, min(H, round(x * scale + origin) + 1));
+    w2c = @(y) max(1, min(W, round(y * scale + origin) + 1));
 
     % ------------------------------------------------------------------ %
     % 2.  Candidate positions — coarse free-space grid
     % ------------------------------------------------------------------ %
-    r_px    = max(1, round(0.105 * scale));
-    freeMap = ~imdilate(obstMask, strel('disk', r_px));
+    r_robot_m  = 0.105;
+    r_robot_px = ceil(r_robot_m * scale);
+    freeMap    = ~imdilate(obstMask, strel('disk', r_robot_px));
 
-    stepPx  = max(2, round(0.20 * scale));   % ~20 cm steps
+    stepPx  = max(2, round(0.20 * scale));
     [GC, GR] = meshgrid(1:stepPx:W, 1:stepPx:H);
     GR = GR(:);  GC = GC(:);
     keep = freeMap(sub2ind([H W], GR, GC));
@@ -64,9 +55,9 @@ function [p, residual] = globalLocalize(lddata, map, scale, origin, maxRange, se
     nA         = numel(candAngles);
 
     % ------------------------------------------------------------------ %
-    % 4.  STAGE 1: DT pre-filter — score every pose, keep top topN
+    % 4.  STAGE 1: DT pre-filter
     % ------------------------------------------------------------------ %
-    topN   = 20;   % how many to pass to the accurate stage 2
+    topN   = 20;
     scores = inf(nCand * nA, 1);
     poses  = zeros(nCand * nA, 3);
     entry  = 0;
@@ -75,7 +66,6 @@ function [p, residual] = globalLocalize(lddata, map, scale, origin, maxRange, se
         cx = xCand(k);  cy = yCand(k);
         for a = 1:nA
             ctheta = candAngles(a);
-            % LiDAR origin
             xs = cx + sensor_offset(1)*cos(ctheta) - sensor_offset(2)*sin(ctheta);
             ys = cy + sensor_offset(1)*sin(ctheta) + sensor_offset(2)*cos(ctheta);
 
@@ -88,30 +78,23 @@ function [p, residual] = globalLocalize(lddata, map, scale, origin, maxRange, se
             end
 
             entry = entry + 1;
-            scores(entry) = sumErr / nBeams;
+            scores(entry)  = sumErr / nBeams;
             poses(entry,:) = [cx, cy, ctheta];
         end
     end
 
-    % Sort and keep top candidates
-    [~, order]   = sort(scores(1:entry));
-    topIdx       = order(1:min(topN, entry));
-    topPoses     = poses(topIdx, :);
+    [~, order] = sort(scores(1:entry));
+    topIdx     = order(1:min(topN, entry));
+    topPoses   = poses(topIdx, :);
 
     % ------------------------------------------------------------------ %
-    % 5.  STAGE 2: ray-cast re-scoring of shortlisted candidates
-    %
-    %     Uses g.m directly — checks both distance AND direction to walls.
-    %     This is what breaks symmetry: a mirrored pose has beams that
-    %     travel in the wrong direction relative to the walls, so g.m
-    %     returns a large error even if the DT score was low.
+    % 5.  STAGE 2: ray-cast re-scoring
     % ------------------------------------------------------------------ %
     params.map      = map;
     params.scale    = scale;
     params.origin   = origin;
     params.maxRange = maxRange;
 
-    % Use more beams for accurate scoring
     nBeamsRC = 72;
     idxRC    = round(linspace(1, numel(ranges), nBeamsRC));
     rRC      = ranges(idxRC);
@@ -125,7 +108,6 @@ function [p, residual] = globalLocalize(lddata, map, scale, origin, maxRange, se
         cy     = topPoses(t,2);
         ctheta = topPoses(t,3);
 
-        % Fine orientation sweep ±15 deg around DT-selected angle
         fineAngles = ctheta + (-15:5:15)*pi/180;
 
         for fa = 1:numel(fineAngles)
@@ -139,7 +121,7 @@ function [p, residual] = globalLocalize(lddata, map, scale, origin, maxRange, se
 
             for b = 1:nBeamsRC
                 [z_hat, Jg] = g(candidate, map, aRC(b), params);
-                if all(Jg == 0), continue; end   % beam hit maxRange, skip
+                if all(Jg == 0), continue; end
                 sumErr = sumErr + abs(rRC(b) - z_hat);
                 nValid = nValid + 1;
             end
@@ -152,6 +134,30 @@ function [p, residual] = globalLocalize(lddata, map, scale, origin, maxRange, se
                 bestPose     = [cx, cy, theta_f];
             end
         end
+    end
+
+    % ------------------------------------------------------------------ %
+    % 6.  Validate: robot footprint must be free
+    % ------------------------------------------------------------------ %
+    [dx, dy] = meshgrid(-r_robot_px:r_robot_px, -r_robot_px:r_robot_px);
+    disc     = (dx.^2 + dy.^2) <= r_robot_px^2;
+    [offR, offC] = find(disc);
+    offR = offR - r_robot_px - 1;
+    offC = offC - r_robot_px - 1;
+
+    gr = max(1, min(H, round(bestPose(1) * scale + origin) + 1));
+    gc = max(1, min(W, round(bestPose(2) * scale + origin) + 1));
+
+    rows     = max(1, min(H, gr + offR));
+    cols     = max(1, min(W, gc + offC));
+    linIdx   = sub2ind([H W], rows, cols);
+    occupied = any(map(linIdx) >= 0.5);
+
+    if occupied
+        fprintf('[globalLocalize] REJECTED: footprint overlaps obstacle  residual=%.3f\n', bestResidual);
+        residual = inf;
+        p = [bestPose(1); bestPose(2); normalizeAngle(bestPose(3))];
+        return
     end
 
     p        = [bestPose(1); bestPose(2); normalizeAngle(bestPose(3))];

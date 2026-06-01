@@ -47,7 +47,7 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
 
     % Warm gate: looser for the first warmIters steps so the filter can
     % settle after globalLocalize before the tight gate takes effect.
-    warmIters = 15;
+    warmIters = 20;
     e_normal  = 2.5;
     e_warm    = 4.0;
     if isfield(params, 'ekfIter') && params.ekfIter <= warmIters
@@ -101,7 +101,8 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
     if numel(V) < minApplyBeams
         return;
     end
-
+    
     % --- Update ---
-    [p, Cp] = ekfUpdate(p, Cp, V, G, R);
+        [p, Cp] = ekfUpdate(p, Cp, V, G, R);
+    
 end

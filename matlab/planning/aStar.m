@@ -114,7 +114,7 @@ function [neighbors] = getNeighbors(node, map)
             continue
         end
 
-        if map(n(1),n(2)) > 0.6
+        if map(n(1),n(2)) > 0.2
             continue
         end
 

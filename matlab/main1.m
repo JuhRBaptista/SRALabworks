@@ -17,17 +17,7 @@ rosshutdown; clear; close all;
 % ===== Map ================================================================
 % map = loadMap("rmap");
 map = loadMap("../data/rmap_updated.png", true);
-% Stamp 2 cm border walls so the EKF is corrected by the arena boundary.
-% Without this, beams that hit the physical walls find maxRange in the
-% grid, produce Jg = 0, and are silently discarded -> EKF drifts at edges.
-% wall_th_m  = 0.02;
-% scale_val  = 40;            % px / m  (set equal to mapParams.scale below)
-% tpx        = max(1, round(wall_th_m * scale_val));
-% map(1:tpx,        :) = 1;
-% map(end-tpx+1:end,:) = 1;
-% map(:, 1:tpx)        = 1;
-% map(:, end-tpx+1:end)= 1;
-% 
+
 log_odds_map = log(map ./ (1 - map));
 log_odds_map = max(-5, min(5, log_odds_map));
 
@@ -59,7 +49,7 @@ params.estimatePose      = true;
 
 % ===== Avoidance ==========================================================
 avoidance = "vfh";
-avoidParams.windowSize    = 10;
+avoidParams.windowSize    = 14;
 avoidParams.sectorWidth   = pi/36;
 avoidParams.numSectors    = round(2*pi / avoidParams.sectorWidth);
 avoidParams.valleyMinWidth = 18;
@@ -68,11 +58,11 @@ avoidParams.smoothSigma   = 0.75;
 
 % ===== Target (world coords) ==============================================
 pathWorld   = ([101, 19] - mapParams.origin) / mapParams.scale;
-initialPose = ([21, 60] - mapParams.origin) / mapParams.scale;
+initialPose = ([80, 65] - mapParams.origin) / mapParams.scale;
 
 % ===== Connect robot ======================================================
 tbot = connectRobot("sim");
-tbot.setPose(initialPose(1), initialPose(2), 0);
+tbot.setPose(initialPose(1), initialPose(2), 3*pi/2);
 
 % ===== Global localisation with retry & quality check ====================
 sensor_offset = [-0.0305; 0];   % LiDAR ~3 cm behind wheel axis

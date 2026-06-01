@@ -55,7 +55,7 @@ function [o, Jg] = g(p, map, angle, params)
             hit = true;
             o   = d;
             % CORRECTED: +d*sin(beam_angle)  (was -d*sin(beam_angle))
-            Jg  = [-cos(beam_angle), -sin(beam_angle), +d*sin(beam_angle)];
+            Jg  = [-cos(beam_angle), -sin(beam_angle), -d*sin(beam_angle)];
             break;
         end
     end

@@ -1,4 +1,4 @@
-function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, avoidParams, slam, savePath)
+function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams, avoidParams, slam, savePath)
 % PathTrackingControl - Tracks a path using waypoint navigation.
 %
 % KEY FIXES vs. the previous version
@@ -14,7 +14,8 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
         avoidParams = [];
     end
     if nargin < 8, slam = false; end
-
+    
+    originalPts = path;
     useEKF = isfield(params, 'ekf') && params.ekf;
 
     if slam
@@ -43,9 +44,9 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
                 if isfield(params, 'p0') && ~isempty(params.p0)
                     p = params.p0(:);
                     Cp = params.Sigma0;
-                    [p, path] = getRoute(tbot, path, mapParams, p);  % passa p0 para skip da localização
+                    [p, path] = getRoute(tbot, originalPts, mapParams, p);  % passa p0 para skip da localização
                 else
-                    [p, path] = getRoute(tbot, path, mapParams);
+                    [p, path] = getRoute(tbot, originalPts, mapParams);
                 end
 
                 N  = size(path, 1);
@@ -71,17 +72,17 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
     relocMinIter     = 10;  % só relocaliza se sigma alto durante 50 iterações consecutivas (~2.5s a 20Hz)
     relocBlocked     = 0;   % cooldown após relocalização para não disparar logo de novo
     relocBlockFrames = 50; % bloqueia relocalizações durante 100 iter após cada uma
-
+    
     for t = 0 : params.dt : params.T
-
         [~, data] = tbot.readLidar();
 
-        if useEKF
+        if useEKF 
             ekfIter = ekfIter + 1;
             mapParams.ekfIter = ekfIter;   % passed into EKF -> warm gate
 
             noise_std    = 0.002;
             [dsr, dsl, ~, ~] = tbot.readEncodersWithNoise(noise_std);
+            
             [p, Cp]      = EKF(dsr, dsl, p, Cp, data, mapParams);
 
             pose.x     = p(1);
@@ -145,14 +146,14 @@ function PathTrackingControl(tbot, params, path, handles, avoidance, mapParams, 
         
                 p  = pBest;
                 conf   = min(1, bestResidual / loc_score_max);
-                Cp = diag([0.20, 0.20, deg2rad(12)].^2) .* (1 + 4*conf);
+                Cp = diag([0.10, 0.10, deg2rad(12)].^2) .* (1 + 4*conf);
                 
                 % Store the EKF state in params so PathTrackingControl can use it.
                 % The ekfIter field lets EKF.m know when to apply the warm gate.
                 params.Sigma0 = Cp;
         
-                waypointsLeft = path(target_index:end, :);
-                [p, path]     = getRoute(tbot, waypointsLeft, mapParams, p);
+                % waypointsLeft = originalPts(target_index:end, :);
+                [p, path]     = getRoute(tbot, originalPts, mapParams, p);
                 N             = size(path, 1);
                 target_index  = 1;
                 e_int         = 0;
