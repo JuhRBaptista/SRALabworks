@@ -37,7 +37,7 @@ mapParams.initialLogOdds = log_odds_map;
 mapParams.scale          = 40;
 mapParams.origin         = 0;
 mapParams.size           = [120, 80];
-mapParams.maxRange       = 3;
+mapParams.maxRange       = 3.5;
 mapParams.lidarMaxRange  = 2;
 
 % ===== Controller parameters ==============================================
@@ -65,7 +65,7 @@ avoidParams.threshold     = 0.2;
 avoidParams.smoothSigma   = 0.75;
 
 % ===== Target (world coords) ==============================================
-initialPose = ([101, 19] - mapParams.origin) / mapParams.scale;
+initialPose = ([60, 42] - mapParams.origin) / mapParams.scale;
 pathWorld = ([80, 65] - mapParams.origin) / mapParams.scale;
 
 % ===== Connect robot ======================================================

@@ -1,39 +1,4 @@
 function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
-% EKF  One full EKF cycle: predict (odometry) then correct (LiDAR).
-%
-%   [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
-%
-%   params must contain:
-%     map      - occupancy grid
-%     maxRange - maximum usable LiDAR range [m]
-%     ekfIter  - (optional) current iteration counter; used for warm gate
-%
-% KEY FIXES applied (vs. the previous version)
-%
-%  1. BEAM SAMPLING
-%     Old: every 5th index (i = 1:5:360) -> 72 beams, many of which are
-%          Inf or out-of-range so the effective count is far lower.
-%     New: linspace over the full 360 -> exactly nBeams evenly-spaced
-%          beams are handed to the gate, maximising angular coverage.
-%
-%  2. MEASUREMENT NOISE MODEL
-%     Old: r_i = (0.035 * o)^2  (purely relative, zero floor)
-%     New: r_i = (sigma_R_rel*o + sigma_R_base)^2
-%          A 3 cm noise floor prevents the filter from over-weighting
-%          very short returns, which are noisy due to specular reflection.
-%
-%  3. MAHALANOBIS GATE
-%     Old: e = 2 (hard-coded, no warm-up)
-%     New: e = 2.5 normally, e = 4.0 for the first warmIters iterations.
-%          The looser early gate lets the EKF pull in after globalLocalize
-%          without discarding every beam during the transient.
-%
-%  4. minApplyBeams GUARD  (was commented out)
-%     Old: correction applied even with 0 accepted beams.
-%     New: update skipped when fewer than minApplyBeams beams pass the
-%          gate.  A handful of beams gives an under-determined,
-%          easily-biased update - the primary seed of divergence.
-
     u = [dsr, dsl];
 
     % --- Prediction ---
@@ -96,13 +61,13 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
             R = [R; r_i];
         end
     end
-
+    numel(V)
     % --- Guard: skip update if too few beams passed the gate ---
     if numel(V) < minApplyBeams
         return;
     end
     
     % --- Update ---
-        [p, Cp] = ekfUpdate(p, Cp, V, G, R);
+    [p, Cp] = ekfUpdate(p, Cp, V, G, R);
     
 end

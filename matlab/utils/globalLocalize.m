@@ -137,32 +137,63 @@ function [p, residual] = globalLocalize(lddata, map, scale, origin, maxRange, se
     end
 
     % ------------------------------------------------------------------ %
-    % 6.  Validate: robot footprint must be free
+    % 6.  Validate: robot footprint must be free — try ranked candidates
     % ------------------------------------------------------------------ %
     [dx, dy] = meshgrid(-r_robot_px:r_robot_px, -r_robot_px:r_robot_px);
     disc     = (dx.^2 + dy.^2) <= r_robot_px^2;
     [offR, offC] = find(disc);
     offR = offR - r_robot_px - 1;
     offC = offC - r_robot_px - 1;
+    
+    % Build the full ranked list from Stage 2 scores (already sorted above)
+    % topPoses is already in score order — we extend the search to all of them
+    allSortedPoses = poses(order, :);   % full ranked list, not just top-N
+    
+    p        = [];
+    residual = inf;
+    
+    for t = 1:size(allSortedPoses, 1)
+        cand = allSortedPoses(t, :);
+    
+        gr = max(1, min(H, round(cand(1) * scale + origin) + 1));
+        gc = max(1, min(W, round(cand(2) * scale + origin) + 1));
+    
+        rows   = max(1, min(H, gr + offR));
+        cols   = max(1, min(W, gc + offC));
+        linIdx = sub2ind([H W], rows, cols);
+    
+        if any(map(linIdx) >= 0.2)
+            continue;   % footprint overlaps obstacle — try next
+        end
+    
+        % Found a free pose — now ray-cast score it properly
+        ctheta = cand(3);
+        xs = cand(1) + sensor_offset(1)*cos(ctheta) - sensor_offset(2)*sin(ctheta);
+        ys = cand(2) + sensor_offset(1)*sin(ctheta) + sensor_offset(2)*cos(ctheta);
+        candidate = [xs; ys; ctheta];
+    
+        sumErr = 0;  nValid = 0;
+        for b = 1:nBeamsRC
+            [z_hat, Jg] = g(candidate, map, aRC(b), params);
+            if all(Jg == 0), continue; end
+            sumErr = sumErr + abs(rRC(b) - z_hat);
+            nValid = nValid + 1;
+        end
+    
+        if nValid < 6, continue; end
 
-    gr = max(1, min(H, round(bestPose(1) * scale + origin) + 1));
-    gc = max(1, min(W, round(bestPose(2) * scale + origin) + 1));
-
-    rows     = max(1, min(H, gr + offR));
-    cols     = max(1, min(W, gc + offC));
-    linIdx   = sub2ind([H W], rows, cols);
-    occupied = any(map(linIdx) >= 0.5);
-
-    if occupied
-        fprintf('[globalLocalize] REJECTED: footprint overlaps obstacle  residual=%.3f\n', bestResidual);
-        residual = inf;
-        p = [bestPose(1); bestPose(2); normalizeAngle(bestPose(3))];
-        return
+        p        = [cand(1); cand(2); normalizeAngle(cand(3))];
+        residual = sumErr / nValid;
+        break;
     end
-
-    p        = [bestPose(1); bestPose(2); normalizeAngle(bestPose(3))];
-    residual = bestResidual;
-
+        
+    if isempty(p)
+        % No free pose found — fall back to geometric best and warn
+        warning('[globalLocalize] All candidates overlap obstacles. Using best geometric pose.');
+        p        = [bestPose(1); bestPose(2); normalizeAngle(bestPose(3))];
+        residual = inf;
+    end
+    
     fprintf('[globalLocalize] est: x=%.2f  y=%.2f  theta=%.1f deg  residual=%.3f m\n', ...
             p(1), p(2), rad2deg(p(3)), residual);
 end

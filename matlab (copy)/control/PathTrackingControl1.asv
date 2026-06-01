@@ -1,26 +1,12 @@
 function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams, avoidParams, slam, savePath)
-% PathTrackingControl1 - Tracks a path using waypoint navigation.
-%
-% FIXES vs. previous version
-%   1. Relocalisation trigger changed from covariance-threshold to
-%      beam-acceptance guard (mirrors demoNavigateWallVFH logic):
-%        - sigma_pos > 0.01 fired constantly in open areas (legit variance).
-%        - New trigger: nAcc/nValid stays below healthy thresholds for
-%          divHoldSecs seconds AND the cooldown has elapsed.
-%        - A hard cooldown (relocBlockSecs) prevents back-to-back relocs.
-%   2. nAcc / nValid are now computed inside this loop (EKF correction
-%      inlined) so the guard has the beam counts every iteration.
-%      EKF.m is still called for predict; the correction is done here.
-%   3. After a reloc, ekfIter is reset to 0 so the warm gate fires again,
-%      giving the filter time to pull in before the tight gate takes over.
 
-    if nargin < 5
-        avoidance  = "none";
+if nargin < 5
+        avoidance = "none";
         mapParams  = [];  mapParams.map = [];
         avoidParams = [];
     end
     if nargin < 8, slam = false; end
-
+    
     originalPts = path;
     useEKF = isfield(params, 'ekf') && params.ekf;
 
@@ -36,110 +22,72 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
     gtTraj       = [];
     r            = rateControl(params.rate);
     Cp           = diag(zeros(1, 3));
-    ekfIter      = 0;
-
-    % ------------------------------------------------------------------
-    % EKF measurement-noise parameters (same as EKF.m)
-    % ------------------------------------------------------------------
-    nBeams        = 120;
-    sigma_R_rel   = 0.035;
-    sigma_R_base  = 0.030;
-    minApplyBeams = 8;
-    warmIters     = 20;
-    e_normal      = 2.5;
-    e_warm        = 4.0;
-
-    % ------------------------------------------------------------------
-    % Beam-acceptance divergence guard parameters
-    % ------------------------------------------------------------------
-    accGoodCount  = 12;      % "healthy" accepted-beam count (absolute)
-    accGoodFrac   = 0.35;    % "healthy" accepted / valid fraction
-    divHoldSecs   = 3.0;     % sustained low-acceptance before declaring divergence
-    relocCoolSecs = 8.0;     % minimum seconds between two re-localizations
-    lowAccSince   = inf;     % timestamp when beam acceptance first went low
-    lastRelocT    = -inf;    % timestamp of last successful re-localization
+    ekfIter      = 0;    % iteration counter forwarded to EKF warm gate
 
     if useEKF
         tbot.initEncoders();
 
         if params.estimatePose
-            if isfield(params, 'p0') && ~isempty(params.p0)
                 p  = params.p0(:);
                 Cp = params.Sigma0;
-                [p, path] = getRoute(tbot, originalPts, mapParams, p);
-            else
-                [p, path] = getRoute(tbot, originalPts, mapParams);
-                Cp = diag([0.1, 0.1, 0.1]);
-            end
-            N = size(path, 1);
+                [p, path] = getRoute(tbot, originalPts, mapParams, p);  % passa p0 para skip da localização
+                N  = size(path, 1);
         else
             [px, py, pth, ~] = tbot.readPose();
             p  = [px; py; normalizeAngle(pth)];
             Cp = diag([0.01, 0.01, 0.001]);
         end
-
-        gzSub     = rossubscriber('/gazebo/model_states');
-        robotName = 'turtlebot3';
     end
 
-    % ------------------------------------------------------------------
-    % Main loop timer (needed for the time-based divergence guard)
-    % ------------------------------------------------------------------
-    tic;
-
+    relocCooldown    = 0;   % contador de iterações com sigma alto
+    relocMinIter     = 10;  % só relocaliza se sigma alto durante 10 iterações consecutivas (~2.5s a 20Hz)
+    relocBlocked     = 0;   % cooldown após relocalização para não disparar logo de novo
+    relocBlockFrames = 25; % bloqueia relocalizações durante 25 iter após cada uma
+    
     for t = 0 : params.dt : params.T
-        t_now = toc;
-
         [~, data] = tbot.readLidar();
 
-        if useEKF
+        if useEKF 
             ekfIter = ekfIter + 1;
-            mapParams.ekfIter = ekfIter;
+            mapParams.ekfIter = ekfIter;   % passed into EKF -> warm gate
 
-            noise_std = 0.002;
-            [dsr, dsl, ~, ~] = tbot.readEncodersWithNoise(noise_std);
+            noise_std    = 0.002;
+            [dsr, dsl, pose2D, ~] = tbot.readEncodersWithNoise(noise_std);
+            % [dsr, dsl, pose2D, ~] = tbot.readEncoders();
+            
+            [p, Cp]      = EKF(dsr, dsl, p, Cp, data, mapParams);
 
-            % --- EKF predict (odometry) ---
-            [p, Cp] = ekfPredict(p, Cp, [dsr, dsl]);
-
-         
             pose.x     = p(1);
             pose.y     = p(2);
             pose.theta = p(3);
 
-            [gt_x, gt_y, gt_theta] = readGroundTruth(gzSub, robotName);
-            gtTraj = [gtTraj; gt_x, gt_y, gt_theta];
+            gtTraj = [gtTraj; pose2D(1), pose2D(2), pose2D(3)];
+        else
+            [pose.x, pose.y, pose.theta, ~] = tbot.readPose();
+            pose.theta = normalizeAngle(pose.theta);
+        end
 
-            % --------------------------------------------------------------
-            % Beam-acceptance divergence guard
-            % --------------------------------------------------------------
-            % "Healthy" = warmup period, OR no valid beams at all (robot in
-            % open space, walls out of range - not a sign of divergence), OR
-            % enough beams accepted in both absolute and relative terms.
-            accHealthy = (ekfIter <= warmIters) || (nValid == 0) || ...
-                         (nAcc >= accGoodCount && nAcc >= accGoodFrac * nValid);
+        % Relocalização automática se a covariância se mantiver grande 
+        sigma_pos = sqrt(Cp(1,1) + Cp(2,2));
+        sigma_th  = sqrt(Cp(3,3));
+        
+        if relocBlocked > 0
+            relocBlocked = relocBlocked - 1;   % ainda em cooldown, não faz nada
+        elseif sigma_pos > 0.01 || sigma_th > deg2rad(30)
 
-            if accHealthy
-                lowAccSince = inf;          % reset the crash timer
-            elseif isinf(lowAccSince)
-                lowAccSince = t_now;        % start timing the crash
-            end
+            sensor_offset = [-0.0305; 0];   % LiDAR ~3 cm behind wheel axis
+            loc_retries   = 4;
+            loc_score_max = 0.12;           % acceptable mean range error [m]
 
-            beamDiverged = (t_now - lowAccSince) > divHoldSecs && ...
-                           (t_now - lastRelocT)  > relocCoolSecs;
-
-            if beamDiverged
-                fprintf('[RELOC] Beam acceptance crashed (%d/%d valid) for >%.0fs - re-localising...\n', ...
-                        nAcc, nValid, divHoldSecs);
-
+            relocCooldown = relocCooldown + 1;
+        
+            if relocCooldown >= relocMinIter
+                fprintf('[RELOC] Sigma alto há %d iterações (sigma_pos=%.2fm, sigma_th=%.1fdeg) - a relocalizar...\n', ...
+                        relocCooldown, sigma_pos, rad2deg(sigma_th));
+        
                 tbot.setVelocity(0, 0);
-
-                % Fresh global fix with retry
-                sensor_offset = [-0.0305; 0];
-                loc_retries   = 4;
-                loc_score_max = 0.12;
-
-                bestResidual = inf;  pBest = p;
+        
+                bestResidual = inf;  pBest = [];
                 for attempt = 1:loc_retries
                     [~, lddata0, ~] = tbot.readLidar();
                     [p_try, s_try]  = globalLocalize(lddata0, mapParams.map, mapParams.scale, ...
@@ -153,40 +101,47 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
                     fprintf('  attempt %d: residual=%.3f m (need <= %.3f) - retrying\n', ...
                             attempt, s_try, loc_score_max);
                 end
-
+                
+                if isempty(pBest)
+    fprintf('Global localization failed after %d attempts, setting random default pose', loc_retries);
+    pBest = [1.5, 1, 0];
+end
+                
                 fprintf('=> pose est: [%.2f m  %.2f m  %.1f deg]  residual=%.3f m\n\n', ...
                         pBest(1), pBest(2), rad2deg(pBest(3)), bestResidual);
-
+                
                 if bestResidual > loc_score_max
-                    warning('High localisation residual (%.3f m). Covariance inflated.', bestResidual);
+                    warning('High localization residual (%.3f m). Starting covariance inflated.', ...
+                            bestResidual);
                 end
 
+        
                 p  = pBest;
-                conf = min(1, bestResidual / loc_score_max);
-                Cp   = diag([0.10, 0.10, deg2rad(12)].^2) .* (1 + 4*conf);
-
-                % Re-plan from recovered pose
-                [p, path]    = getRoute(tbot, originalPts, mapParams, p);
-                N            = size(path, 1);
-                target_index = 1;
-                e_int        = 0;
-
-                % Reset EKF warm-up so the loose gate fires again
-                ekfIter  = 0;
-
-                % Reset guard state
-                lowAccSince = inf;
-                lastRelocT  = t_now;
-
-                fprintf('[RELOC] Route re-traced with %d waypoints.\n', N);
+                pose.x     = p(1);
+                pose.y     = p(2);
+                pose.theta = p(3);
+                conf   = min(1, bestResidual / loc_score_max);
+                Cp = diag([0.20, 0.20, deg2rad(12)].^2) .* (1 + 4*conf);
+                
+                % Store the EKF state in params so PathTrackingControl can use it.
+                % The ekfIter field lets EKF.m know when to apply the warm gate.
+                params.Sigma0 = Cp;
+        
+                % waypointsLeft = originalPts(target_index:end, :);
+                [p, path]     = getRoute(tbot, originalPts, mapParams, p);
+                N             = size(path, 1);
+                target_index  = 1;
+                e_int         = 0;
+                ekfIter       = 0;
+        
+                fprintf('[RELOC] Rota retraçada com %d waypoints.\n', N);
+        
+                relocCooldown = 0;              % reinicia contador
+                relocBlocked  = relocBlockFrames;  % bloqueia durante X iterações
                 pause(2);
-                continue;
             end
-            % --------------------------------------------------------------
-
         else
-            [pose.x, pose.y, pose.theta, ~] = tbot.readPose();
-            pose.theta = normalizeAngle(pose.theta);
+            relocCooldown = 0;   % sigma voltou a ser aceitável, reinicia contador
         end
 
         traj = [traj; pose.x, pose.y];
@@ -230,7 +185,7 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
     end
 
     tbot.setVelocity(0, 0);
-    save("../data/noCorrected_trajs", "traj", "gtTraj");
+    % save("../data/noCorrected_trajs", "traj", "gtTraj");
 
     if slam
         saveResults(map.prob, savePath);

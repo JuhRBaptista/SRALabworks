@@ -1,14 +1,6 @@
 function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams, avoidParams, slam, savePath)
-% PathTrackingControl - Tracks a path using waypoint navigation.
-%
-% KEY FIXES vs. the previous version
-%   1. When EKF is active and estimatePose=true, the initial pose and
-%      covariance are read from params.p0 / params.Sigma0 (set by main.m
-%      after globalLocalize) instead of repeating globalLocalize here.
-%   2. params.ekfIter is incremented each loop iteration and forwarded
-%      to mapParams so EKF.m can apply the warm gate during early steps.
 
-    if nargin < 5
+if nargin < 5
         avoidance = "none";
         mapParams  = [];  mapParams.map = [];
         avoidParams = [];
@@ -36,42 +28,21 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
         tbot.initEncoders();
 
         if params.estimatePose
-            % Use the pose already computed by globalLocalize in main.m
-            if isfield(params, 'p0') && ~isempty(params.p0)
                 p  = params.p0(:);
                 Cp = params.Sigma0;
-                % Rebuild A* path from the localised start
-                if isfield(params, 'p0') && ~isempty(params.p0)
-                    p = params.p0(:);
-                    Cp = params.Sigma0;
-                    [p, path] = getRoute(tbot, originalPts, mapParams, p);  % passa p0 para skip da localização
-                else
-                    [p, path] = getRoute(tbot, originalPts, mapParams);
-                end
-
+                [p, path] = getRoute(tbot, originalPts, mapParams, p);  % passa p0 para skip da localização
                 N  = size(path, 1);
-            else
-                % Fallback (old behaviour): run getRoute which calls
-                % globalLocalize internally
-                [p, path] = getRoute(tbot, path, mapParams);
-                N  = size(path, 1);
-                Cp = diag([0.1, 0.1, 0.1]);
-            end
         else
             [px, py, pth, ~] = tbot.readPose();
             p  = [px; py; normalizeAngle(pth)];
             Cp = diag([0.01, 0.01, 0.001]);
         end
-
-        gzSub     = rossubscriber('/gazebo/model_states');
-        robotName = 'turtlebot3';
     end
 
-        % --- fora do loop, na inicialização ---
     relocCooldown    = 0;   % contador de iterações com sigma alto
-    relocMinIter     = 10;  % só relocaliza se sigma alto durante 50 iterações consecutivas (~2.5s a 20Hz)
+    relocMinIter     = 10;  % só relocaliza se sigma alto durante 10 iterações consecutivas (~2.5s a 20Hz)
     relocBlocked     = 0;   % cooldown após relocalização para não disparar logo de novo
-    relocBlockFrames = 40; % bloqueia relocalizações durante 100 iter após cada uma
+    relocBlockFrames = 25; % bloqueia relocalizações durante 25 iter após cada uma
     
     for t = 0 : params.dt : params.T
         [~, data] = tbot.readLidar();
@@ -81,7 +52,8 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
             mapParams.ekfIter = ekfIter;   % passed into EKF -> warm gate
 
             noise_std    = 0.002;
-            [dsr, dsl, ~, ~] = tbot.readEncodersWithNoise(noise_std);
+            [dsr, dsl, pose2D, ~] = tbot.readEncodersWithNoise(noise_std);
+            % [dsr, dsl, pose2D, ~] = tbot.readEncoders();
             
             [p, Cp]      = EKF(dsr, dsl, p, Cp, data, mapParams);
 
@@ -89,21 +61,20 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
             pose.y     = p(2);
             pose.theta = p(3);
 
-            [gt_x, gt_y, gt_theta] = readGroundTruth(gzSub, robotName);
-            gtTraj = [gtTraj; gt_x, gt_y, gt_theta];
+            gtTraj = [gtTraj; pose2D(1), pose2D(2), pose2D(3)];
         else
             [pose.x, pose.y, pose.theta, ~] = tbot.readPose();
             pose.theta = normalizeAngle(pose.theta);
         end
 
-        % --- Relocalização automática se a covariância se mantiver grande ---
+        % Relocalização automática se a covariância se mantiver grande 
         sigma_pos = sqrt(Cp(1,1) + Cp(2,2));
         sigma_th  = sqrt(Cp(3,3));
         
         if relocBlocked > 0
             relocBlocked = relocBlocked - 1;   % ainda em cooldown, não faz nada
         elseif sigma_pos > 0.01 || sigma_th > deg2rad(30)
-            % ===== Global localisation with retry & quality check ====================
+
             sensor_offset = [-0.0305; 0];   % LiDAR ~3 cm behind wheel axis
             loc_retries   = 4;
             loc_score_max = 0.12;           % acceptable mean range error [m]
@@ -132,7 +103,8 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
                 end
                 
                 if isempty(pBest)
-                    error('Global localization failed after %d attempts.', loc_retries);
+                    fprintf('Global localization failed after %d attempts, setting random default pose', loc_retries);
+                    pBest = [1.5, 1, 0];
                 end
                 
                 fprintf('=> pose est: [%.2f m  %.2f m  %.1f deg]  residual=%.3f m\n\n', ...
@@ -150,12 +122,7 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
                 pose.theta = p(3);
                 conf   = min(1, bestResidual / loc_score_max);
                 Cp = diag([0.20, 0.20, deg2rad(12)].^2) .* (1 + 4*conf);
-                
-                % Store the EKF state in params so PathTrackingControl can use it.
-                % The ekfIter field lets EKF.m know when to apply the warm gate.
-                params.Sigma0 = Cp;
         
-                % waypointsLeft = originalPts(target_index:end, :);
                 [p, path]     = getRoute(tbot, originalPts, mapParams, p);
                 N             = size(path, 1);
                 target_index  = 1;
@@ -213,14 +180,12 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
     end
 
     tbot.setVelocity(0, 0);
-    save("../data/noCorrected_trajs", "traj", "gtTraj");
 
     if slam
         saveResults(map.prob, savePath);
     end
 end
 
-% -------------------------------------------------------------------------
 
 function [target, h, alpha] = computeTarget(pose, waypoint, avoidance, mapParams, avoidParams)
     h = 0; alpha = 0;

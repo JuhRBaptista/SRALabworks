@@ -71,7 +71,7 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
     relocCooldown    = 0;   % contador de iterações com sigma alto
     relocMinIter     = 10;  % só relocaliza se sigma alto durante 50 iterações consecutivas (~2.5s a 20Hz)
     relocBlocked     = 0;   % cooldown após relocalização para não disparar logo de novo
-    relocBlockFrames = 40; % bloqueia relocalizações durante 100 iter após cada uma
+    relocBlockFrames = 25; % bloqueia relocalizações durante 100 iter após cada uma
     
     for t = 0 : params.dt : params.T
         [~, data] = tbot.readLidar();
