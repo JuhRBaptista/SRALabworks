@@ -48,7 +48,7 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
     % Warm gate: looser for the first warmIters steps so the filter can
     % settle after globalLocalize before the tight gate takes effect.
     warmIters = 15;
-    e_normal  = 2.5;
+    e_normal  = 3;%2.5;
     e_warm    = 4.0;
     if isfield(params, 'ekfIter') && params.ekfIter <= warmIters
         e_gate = e_warm;

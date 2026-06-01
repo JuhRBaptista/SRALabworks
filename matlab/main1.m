@@ -20,14 +20,14 @@ map = loadMap("../data/rmap_updated.png", true);
 % Stamp 2 cm border walls so the EKF is corrected by the arena boundary.
 % Without this, beams that hit the physical walls find maxRange in the
 % grid, produce Jg = 0, and are silently discarded -> EKF drifts at edges.
-wall_th_m  = 0.02;
-scale_val  = 40;            % px / m  (set equal to mapParams.scale below)
-tpx        = max(1, round(wall_th_m * scale_val));
-map(1:tpx,        :) = 1;
-map(end-tpx+1:end,:) = 1;
-map(:, 1:tpx)        = 1;
-map(:, end-tpx+1:end)= 1;
-
+% wall_th_m  = 0.02;
+% scale_val  = 40;            % px / m  (set equal to mapParams.scale below)
+% tpx        = max(1, round(wall_th_m * scale_val));
+% map(1:tpx,        :) = 1;
+% map(end-tpx+1:end,:) = 1;
+% map(:, 1:tpx)        = 1;
+% map(:, end-tpx+1:end)= 1;
+% 
 log_odds_map = log(map ./ (1 - map));
 log_odds_map = max(-5, min(5, log_odds_map));
 
@@ -47,7 +47,7 @@ params.kv                = 2.0;
 params.ki                = 0.1;
 params.ks                = 3.0;
 params.distance          = 0.1;
-params.vMax              = 0.05;
+params.vMax              = 0.1;
 params.wMax              = 2.8;
 params.rate              = 2000;
 params.T                 = 6000;
