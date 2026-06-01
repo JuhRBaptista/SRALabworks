@@ -94,6 +94,7 @@ function [p, residual] = globalLocalize(lddata, map, scale, origin, maxRange, se
     params.scale    = scale;
     params.origin   = origin;
     params.maxRange = maxRange;
+    params.sensor_offset = sensor_offset;
 
     nBeamsRC = 72;
     idxRC    = round(linspace(1, numel(ranges), nBeamsRC));

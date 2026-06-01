@@ -7,14 +7,14 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
     % --- Measurement model parameters ---
     nBeams       = 120;     % evenly-spaced beams to evaluate
     sigma_R_rel  = 0.035;   % relative range noise coefficient
-    sigma_R_base = 0.030;   % absolute noise floor [m]
+    sigma_R_base = 0.040;   % absolute noise floor [m]
     minApplyBeams = 8;      % skip update if fewer beams pass the gate
 
     % Warm gate: looser for the first warmIters steps so the filter can
     % settle after globalLocalize before the tight gate takes effect.
     warmIters = 15;
-    e_normal  = 2.5;
-    e_warm    = 4.0;
+    e_normal  = 2;
+    e_warm    = 3.0;
     if isfield(params, 'ekfIter') && params.ekfIter <= warmIters
         e_gate = e_warm;
     else
@@ -43,12 +43,10 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
         r_i = (sigma_R_rel * o + sigma_R_base)^2;
 
         % Predicted observation and Jacobian
-        [o_hat, Jg] = g(p, params.map, ang, params);
-
-        if all(Jg == 0)
-            continue;   % beam hit maxRange (no wall) -> skip
-        end
-
+        [o_hat, hit_pt] = g(p, params.map, ang, params);
+        if isempty(hit_pt), continue; end   % sem impacto -> salta o beam
+        
+        Jg = obsJacobian(p, hit_pt, params.sensor_offset);
         % Innovation
         v_i = o - o_hat;
 
@@ -67,32 +65,8 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
         return;
     end
 
-    % Save state before correction
-    p_before = p;
-
     % --- Update ---
-    [p_new, Cp_new] = ekfUpdate(p, Cp, V, G, R);
+    [p, Cp] = ekfUpdate(p, Cp, V, G, R);
 
-    % ---------------------------------------------------------
-    % Limit EKF correction to avoid sudden jumps
-    % ---------------------------------------------------------
-    delta = p_new - p_before;
-
-    max_dx     = 0.10;          % [m]
-    max_dy     = 0.10;          % [m]
-    max_dtheta = deg2rad(5);    % [rad]
-
-    delta(1) = max(min(delta(1), max_dx), -max_dx);
-    delta(2) = max(min(delta(2), max_dy), -max_dy);
-
-    % Normalize angle difference to [-pi, pi]
-    delta(3) = atan2(sin(delta(3)), cos(delta(3)));
-    delta(3) = max(min(delta(3), max_dtheta), -max_dtheta);
-
-    % Apply limited correction
-    p = p_before + delta;
-
-    % Keep updated covariance
-    Cp = Cp_new;
     
 end

@@ -52,8 +52,8 @@ avoidParams.threshold     = 0.2;
 avoidParams.smoothSigma   = 0.75;
 
 % Path 1
-% initialPose = [1.9, 0.25, pi/2];
-% pathWorld = [1, 0.5];
+% initialPose = [1, 0.5, pi/2];
+% pathWorld = [1, 1.5];
 
 % Path 2
 initialPose = [0.5, 1, 0];
@@ -68,6 +68,7 @@ sensor_offset = [-0.0305; 0];   % LiDAR ~3 cm behind wheel axis
 loc_retries   = 4;
 loc_score_max = 0.12;           % acceptable mean range error [m]
 
+mapParams.sensor_offset = sensor_offset;
 % Initialize self localization
 fprintf('\n=== Global localization ===\n');
 bestResidual = inf;  pBest = [];
