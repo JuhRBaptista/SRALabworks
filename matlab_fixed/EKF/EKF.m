@@ -42,7 +42,7 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
     % --- Measurement model parameters ---
     nBeams       = 120;     % evenly-spaced beams to evaluate
     sigma_R_rel  = 0.035;   % relative range noise coefficient
-    sigma_R_base = 0.030;   % absolute noise floor [m]
+    sigma_R_base = 0.040;   % absolute noise floor [m]
     minApplyBeams = 8;      % skip update if fewer beams pass the gate
 
     % Warm gate: looser for the first warmIters steps so the filter can

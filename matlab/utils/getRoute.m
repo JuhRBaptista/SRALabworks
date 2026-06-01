@@ -1,8 +1,13 @@
-function [p, path] = getRoute(tbot, targets, mapParams)
-    
-    % Estimate initial pose via global localization
-    p  = globalLocalize(tbot, mapParams);
-    p(3) = normalizeAngle(p(3));
+function [p, path] = getRoute(tbot, targets, mapParams, p0)
+    if nargin >= 4 && ~isempty(p0)
+        p = p0(:);          % já localizado em main.m, não repete
+    else
+        [~, lddata, ~] = tbot.readLidar();
+        p = globalLocalize(lddata, mapParams.map, mapParams.scale, ...
+                           mapParams.origin, mapParams.maxRange, [-0.0305; 0]);
+        p(3) = normalizeAngle(p(3));
+    end
+    % ... resto inalterado
 
     % Convert estimated pose to grid coordinates
     x = round((p(1) * mapParams.scale) + mapParams.origin);
