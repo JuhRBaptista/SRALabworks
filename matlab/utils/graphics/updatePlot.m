@@ -66,9 +66,17 @@ function updatePlot(plotHandles, trajectory, gtTrajectory, robotPose, targetPose
     % 3. Robot current position marker
     % ------------------------------------------------------------------
     if opt.showRobot && isfield(plotHandles, 'robot')
+
+        robotRadius = 0.21/2; % 105 mm
+    
+        theta = linspace(0, 2*pi, 50);
+    
+        xRobot = robotPose.x + robotRadius*cos(theta);
+        yRobot = robotPose.y + robotRadius*sin(theta);
+    
         set(plotHandles.robot, ...
-            'XData', robotPose.x, ...
-            'YData', robotPose.y);
+            'XData', xRobot, ...
+            'YData', yRobot);
     end
 
     % ------------------------------------------------------------------

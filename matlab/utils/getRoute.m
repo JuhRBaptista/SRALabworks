@@ -1,4 +1,5 @@
 function [p, path] = getRoute(tbot, targets, mapParams, p0)
+
     if nargin >= 4 && ~isempty(p0)
         p = p0(:);          % já localizado em main.m, não repete
     else
@@ -7,12 +8,11 @@ function [p, path] = getRoute(tbot, targets, mapParams, p0)
                            mapParams.origin, mapParams.maxRange, [-0.0305; 0]);
         p(3) = normalizeAngle(p(3));
     end
-    % ... resto inalterado
 
     % Convert estimated pose to grid coordinates
-    x = round((p(1) * mapParams.scale) + mapParams.origin + 1);
-    y = round((p(2) * mapParams.scale) + mapParams.origin + 1);
-    gridPose = [x, y]
+    x = round((p(1) * mapParams.scale) + mapParams.origin);
+    y = round((p(2) * mapParams.scale) + mapParams.origin);
+    gridPose = [x, y];
     
     gridPath = [];
 
@@ -27,8 +27,8 @@ function [p, path] = getRoute(tbot, targets, mapParams, p0)
         target = targets(i, :);
 
         % Convert target to grid coordinates
-        x = round((target(1) * mapParams.scale) + mapParams.origin + 1);
-        y = round((target(2) * mapParams.scale) + mapParams.origin + 1);
+        x = round((target(1) * mapParams.scale) + mapParams.origin);
+        y = round((target(2) * mapParams.scale) + mapParams.origin);
         gridTarget = [x, y];
         
         % Compute optimal path from current grid pose to target

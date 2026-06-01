@@ -1,39 +1,4 @@
 function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
-% EKF  One full EKF cycle: predict (odometry) then correct (LiDAR).
-%
-%   [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
-%
-%   params must contain:
-%     map      - occupancy grid
-%     maxRange - maximum usable LiDAR range [m]
-%     ekfIter  - (optional) current iteration counter; used for warm gate
-%
-% KEY FIXES applied (vs. the previous version)
-%
-%  1. BEAM SAMPLING
-%     Old: every 5th index (i = 1:5:360) -> 72 beams, many of which are
-%          Inf or out-of-range so the effective count is far lower.
-%     New: linspace over the full 360 -> exactly nBeams evenly-spaced
-%          beams are handed to the gate, maximising angular coverage.
-%
-%  2. MEASUREMENT NOISE MODEL
-%     Old: r_i = (0.035 * o)^2  (purely relative, zero floor)
-%     New: r_i = (sigma_R_rel*o + sigma_R_base)^2
-%          A 3 cm noise floor prevents the filter from over-weighting
-%          very short returns, which are noisy due to specular reflection.
-%
-%  3. MAHALANOBIS GATE
-%     Old: e = 2 (hard-coded, no warm-up)
-%     New: e = 2.5 normally, e = 4.0 for the first warmIters iterations.
-%          The looser early gate lets the EKF pull in after globalLocalize
-%          without discarding every beam during the transient.
-%
-%  4. minApplyBeams GUARD  (was commented out)
-%     Old: correction applied even with 0 accepted beams.
-%     New: update skipped when fewer than minApplyBeams beams pass the
-%          gate.  A handful of beams gives an under-determined,
-%          easily-biased update - the primary seed of divergence.
-
     u = [dsr, dsl];
 
     % --- Prediction ---
@@ -42,7 +7,7 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
     % --- Measurement model parameters ---
     nBeams       = 120;     % evenly-spaced beams to evaluate
     sigma_R_rel  = 0.035;   % relative range noise coefficient
-    sigma_R_base = 0.050;   % absolute noise floor [m]
+    sigma_R_base = 0.030;   % absolute noise floor [m]
     minApplyBeams = 8;      % skip update if fewer beams pass the gate
 
     % Warm gate: looser for the first warmIters steps so the filter can
@@ -62,7 +27,7 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
     V = [];   % innovation vector
     G = [];   % stacked Jacobians
     R = [];   % measurement noise variances
-
+    valid_beams = 0;
     for k = 1:numel(beam_idx)
         i   = beam_idx(k);
         o   = data.Ranges(i);
@@ -72,6 +37,7 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
         if ~isfinite(o) || o <= 0.12 || o >= params.maxRange
             continue;
         end
+        valid_beams = valid_beams+1;
 
         % Range-dependent noise variance (with floor)
         r_i = (sigma_R_rel * o + sigma_R_base)^2;
@@ -96,13 +62,37 @@ function [p, Cp] = EKF(dsr, dsl, p, Cp, data, params)
             R = [R; r_i];
         end
     end
-
-    % --- Guard: skip update if too few beams passed the gate ---
+        % --- Guard: skip update if too few beams passed the gate ---
     if numel(V) < minApplyBeams
         return;
     end
-    
+
+    % Save state before correction
+    p_before = p;
+
     % --- Update ---
-        [p, Cp] = ekfUpdate(p, Cp, V, G, R);
+    [p_new, Cp_new] = ekfUpdate(p, Cp, V, G, R);
+
+    % ---------------------------------------------------------
+    % Limit EKF correction to avoid sudden jumps
+    % ---------------------------------------------------------
+    delta = p_new - p_before;
+
+    max_dx     = 0.10;          % [m]
+    max_dy     = 0.10;          % [m]
+    max_dtheta = deg2rad(5);    % [rad]
+
+    delta(1) = max(min(delta(1), max_dx), -max_dx);
+    delta(2) = max(min(delta(2), max_dy), -max_dy);
+
+    % Normalize angle difference to [-pi, pi]
+    delta(3) = atan2(sin(delta(3)), cos(delta(3)));
+    delta(3) = max(min(delta(3), max_dtheta), -max_dtheta);
+
+    % Apply limited correction
+    p = p_before + delta;
+
+    % Keep updated covariance
+    Cp = Cp_new;
     
 end

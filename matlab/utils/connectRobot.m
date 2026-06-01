@@ -6,7 +6,7 @@ function [tbot] = connectRobot(connectionType)
                  IP_TURTLEBOT = "192.168.56.101";
                 IP_HOST_COMPUTER = "192.168.56.1";
             case "tbot1"
-                IP_TURTLEBOT = "192.168.1.201";
+                IP_TURTLEBOT = "192.168.1.200";
                 IP_HOST_COMPUTER = "192.168.1.108";
             case "tbot2"
                 IP_TURTLEBOT = "192.168.1.201";

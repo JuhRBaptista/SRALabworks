@@ -122,12 +122,26 @@ function plotHandles = setupPlot(map, pathWorld, origin, scale, options)
     % 6. Robot current position marker (optional)
     % ------------------------------------------------------------------
     if opt.showRobot
-        h = plot(NaN, NaN, 'ko', 'MarkerSize', 8, 'MarkerFaceColor', 'k');
-        plotHandles.robot    = h;
+
+        robotRadius = 0.105; % 210 mm / 2
+    
+        theta = linspace(0,2*pi,50);
+    
+        h = plot(robotRadius*cos(theta), ...
+                 robotRadius*sin(theta), ...
+                 'k', 'LineWidth', 2);
+    
+        plotHandles.robot = h;
+    
+        % linha para indicar heading
+        hHeading = plot([0 0],[0 0], ...
+                        'r', 'LineWidth', 2);
+    
+        plotHandles.robotHeading = hHeading;
+    
         legendHandles(end+1) = h;
         legendLabels{end+1}  = 'Robot';
     end
-
     % ------------------------------------------------------------------
     % 7. Current navigation target (optional)
     %    Useful for path-tracking and avoidance scenarios
