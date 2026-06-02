@@ -11,8 +11,8 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
     useEKF = isfield(params, 'ekf') && params.ekf;
 
     if slam
-        mapAvoid = initMap(mapParams);
-        % mapParams.map = mapParams.initialProb;
+        map = initMap(mapParams);
+        mapParams.map = mapParams.initialProb;
     end
 
     target_index = 1;
@@ -148,10 +148,11 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
         if slam
             idx_occ  = tbot.getInRangeLidarDataIdx(data);
             idx_free = tbot.getOutRangeLidarDataIdx(data);
-            [mapAvoid, ~] = mapUpdate(mapAvoid, data, idx_occ, idx_free, pose, mapParams);
+            [map, ~] = mapUpdate(map, data, idx_occ, idx_free, pose, mapParams);
+            mapParams.map = map.prob;
         end
 
-        [target, h, alpha] = computeTarget(pose, waypoint, avoidance, mapParams, mapAvoid, avoidParams);
+        [target, h, alpha] = computeTarget(pose, waypoint, avoidance, mapParams, avoidParams);
 
         distance = getEuclidianDistance(pose, waypoint);
         e        = getEuclidianDistance(pose, target) - params.distance;
@@ -182,26 +183,26 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
     tbot.setVelocity(0, 0);
 
     if slam
-        saveResults(mapAvoid.prob, savePath);
+        saveResults(map.prob, savePath);
     end
 end
 
 
-function [target, h, alpha] = computeTarget(pose, waypoint, avoidance, mapParams, mapAvoid, avoidParams)
+function [target, h, alpha] = computeTarget(pose, waypoint, avoidance, mapParams, avoidParams)
     h = 0; alpha = 0;
     switch avoidance
         case "vff"
-            target = computeTargetVFF(pose, waypoint, mapParams, mapAvoid, avoidParams);
+            target = computeTargetVFF(pose, waypoint, mapParams, avoidParams);
         case "vfh"
             alpha  = avoidParams.sectorWidth;
-            [target, h] = computeTargetVFH(pose, waypoint, mapParams, mapAvoid, avoidParams);
+            [target, h] = computeTargetVFH(pose, waypoint, mapParams, avoidParams);
         otherwise
             target = waypoint;
     end
 end
 
-function target = computeTargetVFF(pose, waypoint, mapParams, mapAvoid, avoidParams)
-    [Fa, Fr] = VFF([pose.x, pose.y], [waypoint.x, waypoint.y], mapParams, mapAvoid, avoidParams);
+function target = computeTargetVFF(pose, waypoint, mapParams, avoidParams)
+    [Fa, Fr] = VFF([pose.x, pose.y], [waypoint.x, waypoint.y], mapParams, avoidParams);
     F  = Fa + Fr;  Fn = norm(F);
     if Fn < 1e-6
         target = pose;
@@ -214,9 +215,9 @@ function target = computeTargetVFF(pose, waypoint, mapParams, mapAvoid, avoidPar
     end
 end
 
-function [target, h] = computeTargetVFH(pose, waypoint, mapParams, mapAvoid, avoidParams)
+function [target, h] = computeTargetVFH(pose, waypoint, mapParams, avoidParams)
     [steerAngle, h] = VFH([pose.x, pose.y, pose.theta], [waypoint.x, waypoint.y], ...
-                          mapParams, mapAvoid, avoidParams);
+                          mapParams, avoidParams);
     if isnan(steerAngle)
         target = pose; return;
     end

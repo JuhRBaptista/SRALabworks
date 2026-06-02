@@ -1,6 +1,6 @@
 function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams, avoidParams, slam, savePath)
 
-    if nargin < 5
+if nargin < 5
         avoidance = "none";
         mapParams  = [];  mapParams.map = [];
         avoidParams = [];
@@ -11,8 +11,8 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
     useEKF = isfield(params, 'ekf') && params.ekf;
 
     if slam
-        mapAvoid = initMap(mapParams);
-        % mapParams.map = mapParams.initialProb;
+        map = initMap(mapParams);
+        mapParams.map = mapParams.initialProb;
     end
 
     target_index = 1;
@@ -40,7 +40,7 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
     end
 
     relocCooldown    = 0;   % contador de iterações com sigma alto
-    relocMinIter     = 20;  % só relocaliza se sigma alto durante 10 iterações consecutivas (~2.5s a 20Hz)
+    relocMinIter     = 10;  % só relocaliza se sigma alto durante 10 iterações consecutivas (~2.5s a 20Hz)
     relocBlocked     = 0;   % cooldown após relocalização para não disparar logo de novo
     relocBlockFrames = 25; % bloqueia relocalizações durante 25 iter após cada uma
     
@@ -73,7 +73,7 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
         
         if relocBlocked > 0
             relocBlocked = relocBlocked - 1;   % ainda em cooldown, não faz nada
-        elseif sigma_pos > 0.015 || sigma_th > deg2rad(30)
+        elseif sigma_pos > 0.01 || sigma_th > deg2rad(30)
 
             sensor_offset = [-0.0305; 0];   % LiDAR ~3 cm behind wheel axis
             loc_retries   = 4;
@@ -103,9 +103,9 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
                 end
                 
                 if isempty(pBest)
-                    fprintf('Global localization failed after %d attempts, setting random default pose', loc_retries);
-                    pBest = [1.5, 1, 0];
-                end
+    fprintf('Global localization failed after %d attempts, setting random default pose', loc_retries);
+    pBest = [1.5, 1, 0];
+end
                 
                 fprintf('=> pose est: [%.2f m  %.2f m  %.1f deg]  residual=%.3f m\n\n', ...
                         pBest(1), pBest(2), rad2deg(pBest(3)), bestResidual);
@@ -120,10 +120,14 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
                 pose.x     = p(1);
                 pose.y     = p(2);
                 pose.theta = p(3);
-
                 conf   = min(1, bestResidual / loc_score_max);
                 Cp = diag([0.20, 0.20, deg2rad(12)].^2) .* (1 + 4*conf);
+                
+                % Store the EKF state in params so PathTrackingControl can use it.
+                % The ekfIter field lets EKF.m know when to apply the warm gate.
+                params.Sigma0 = Cp;
         
+                % waypointsLeft = originalPts(target_index:end, :);
                 [p, path]     = getRoute(tbot, originalPts, mapParams, p);
                 N             = size(path, 1);
                 target_index  = 1;
@@ -148,10 +152,11 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
         if slam
             idx_occ  = tbot.getInRangeLidarDataIdx(data);
             idx_free = tbot.getOutRangeLidarDataIdx(data);
-            [mapAvoid, ~] = mapUpdate(mapAvoid, data, idx_occ, idx_free, pose, mapParams);
+            [map, ~] = mapUpdate(map, data, idx_occ, idx_free, pose, mapParams);
+            mapParams.map = map.prob;
         end
 
-        [target, h, alpha] = computeTarget(pose, waypoint, avoidance, mapParams, mapAvoid, avoidParams);
+        [target, h, alpha] = computeTarget(pose, waypoint, avoidance, mapParams, avoidParams);
 
         distance = getEuclidianDistance(pose, waypoint);
         e        = getEuclidianDistance(pose, target) - params.distance;
@@ -180,28 +185,30 @@ function PathTrackingControl1(tbot, params, path, handles, avoidance, mapParams,
     end
 
     tbot.setVelocity(0, 0);
+    % save("../data/noCorrected_trajs", "traj", "gtTraj");
 
     if slam
-        saveResults(mapAvoid.prob, savePath);
+        saveResults(map.prob, savePath);
     end
 end
 
+% -------------------------------------------------------------------------
 
-function [target, h, alpha] = computeTarget(pose, waypoint, avoidance, mapParams, mapAvoid, avoidParams)
+function [target, h, alpha] = computeTarget(pose, waypoint, avoidance, mapParams, avoidParams)
     h = 0; alpha = 0;
     switch avoidance
         case "vff"
-            target = computeTargetVFF(pose, waypoint, mapParams, mapAvoid, avoidParams);
+            target = computeTargetVFF(pose, waypoint, mapParams, avoidParams);
         case "vfh"
             alpha  = avoidParams.sectorWidth;
-            [target, h] = computeTargetVFH(pose, waypoint, mapParams, mapAvoid, avoidParams);
+            [target, h] = computeTargetVFH(pose, waypoint, mapParams, avoidParams);
         otherwise
             target = waypoint;
     end
 end
 
-function target = computeTargetVFF(pose, waypoint, mapParams, mapAvoid, avoidParams)
-    [Fa, Fr] = VFF([pose.x, pose.y], [waypoint.x, waypoint.y], mapParams, mapAvoid, avoidParams);
+function target = computeTargetVFF(pose, waypoint, mapParams, avoidParams)
+    [Fa, Fr] = VFF([pose.x, pose.y], [waypoint.x, waypoint.y], mapParams, avoidParams);
     F  = Fa + Fr;  Fn = norm(F);
     if Fn < 1e-6
         target = pose;
@@ -214,9 +221,9 @@ function target = computeTargetVFF(pose, waypoint, mapParams, mapAvoid, avoidPar
     end
 end
 
-function [target, h] = computeTargetVFH(pose, waypoint, mapParams, mapAvoid, avoidParams)
+function [target, h] = computeTargetVFH(pose, waypoint, mapParams, avoidParams)
     [steerAngle, h] = VFH([pose.x, pose.y, pose.theta], [waypoint.x, waypoint.y], ...
-                          mapParams, mapAvoid, avoidParams);
+                          mapParams, avoidParams);
     if isnan(steerAngle)
         target = pose; return;
     end

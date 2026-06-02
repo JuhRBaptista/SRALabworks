@@ -1,4 +1,4 @@
-function [steerAngle, binaryHist] = VFH(robotPose, targetPose, mapParams, mapAvoid, avoidParams)
+function [steerAngle, binaryHist] = VFH(robotPose, targetPose, mapParams, avoidParams)
     % VFH - Computes a steering direction using Vector Field Histogram.
 
     % mapParams
@@ -23,12 +23,12 @@ function [steerAngle, binaryHist] = VFH(robotPose, targetPose, mapParams, mapAvo
     
     % Window boundaries
     xMin = max(1, robotGridX - halfWindow);
-    xMax = min(size(mapAvoid.prob, 1), robotGridX + halfWindow);
+    xMax = min(size(mapParams.map, 1), robotGridX + halfWindow);
     yMin = max(1, robotGridY - halfWindow);
-    yMax = min(size(mapAvoid.prob, 2), robotGridY + halfWindow);
+    yMax = min(size(mapParams.map, 2), robotGridY + halfWindow);
     
     % Extract local occupancy map
-    localMap = mapAvoid.prob(xMin:xMax, yMin:yMax);
+    localMap = mapParams.map(xMin:xMax, yMin:yMax);
     
     % Robot position inside local map
     centerX = robotGridX - xMin + 1;

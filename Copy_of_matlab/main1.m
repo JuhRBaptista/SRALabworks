@@ -34,7 +34,7 @@ params.ks                = 3.0;
 params.distance          = 0.1;
 params.vMax              = 0.1;
 params.wMax              = 2.8;
-params.rate              = 20000;
+params.rate              = 2000;
 params.T                 = 6000;
 params.dt                = 0.05;
 params.toleranceError    = 0.15;
@@ -52,12 +52,12 @@ avoidParams.threshold     = 0.2;
 avoidParams.smoothSigma   = 0.75;
 
 % Path 1
-% initialPose = [1, 0.5, pi/2];
-% pathWorld = [1, 1.5];
+initialPose = [1, 0.5, pi/2];
+pathWorld = [1, 1.5];
 
 % Path 2
-initialPose = [0.5, 1, 0];
-pathWorld = [2.5, 0.75];
+% initialPose = [0.5, 1, 0];
+% pathWorld = [2.5, 0.75];
 
 % Connect robot
 tbot = connectRobot("sim");
@@ -123,7 +123,7 @@ handles = setupPlot(mapParams.map', [], mapParams.origin, ...
                     mapParams.scale, opts);
 
 % Run navigation
-slam    = true;
+slam    = false;
 savePath = fullfile(fileparts(mfilename('fullpath')), '..', 'data', 'rmap_updated');
 
 PathTrackingControl1(tbot, params, pathWorld, handles, avoidance, ...
